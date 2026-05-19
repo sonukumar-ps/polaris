@@ -18,8 +18,8 @@ This file is the high-level product roadmap. Detailed execution lives in `curren
 - `[x]` Add web, iOS, and Android app configuration
 - `[x]` Add in-repo task tracking
 - `[x]` Install dependencies and generate lockfile
-- `[ ]` Verify app boots on web
-- `[ ]` Verify app boots in Expo Go or a development build
+- `[x]` Verify app boots on web
+- `[x]` Verify app boots in Expo Go or a development build
 
 ### Backend Setup
 

@@ -33,6 +33,8 @@ npm run ios
 npm run android
 ```
 
+Native development boot notes live in [`docs/dev/native-boot.md`](./docs/dev/native-boot.md).
+
 ## Project Tracking
 
 Until a dedicated project tracker is introduced, work is tracked in [`docs/tasks`](./docs/tasks/README.md).
