@@ -20,7 +20,7 @@ This is the near-term sequential queue. Work from top to bottom.
 ### SETUP-002: Verify app boots on web
 
 - Type: Project Setup
-- Status: Todo
+- Status: Done
 - Priority: P0
 - Depends On: SETUP-001
 - Acceptance Criteria:
@@ -34,7 +34,7 @@ This is the near-term sequential queue. Work from top to bottom.
 ### SETUP-003: Verify native boot path
 
 - Type: Project Setup
-- Status: Todo
+- Status: Done
 - Priority: P1
 - Depends On: SETUP-002
 - Acceptance Criteria:
@@ -43,6 +43,7 @@ This is the near-term sequential queue. Work from top to bottom.
 - Implementation Notes:
   - Prefer Expo Go first for speed.
   - Use EAS development build only if Expo Go is insufficient.
+  - Native boot path is documented in `docs/dev/native-boot.md`.
 
 ### DB-001: Add Supabase client and local setup files
 
