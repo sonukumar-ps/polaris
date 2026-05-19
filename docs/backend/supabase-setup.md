@@ -51,6 +51,16 @@ Preferred migration workflow:
 /opt/homebrew/bin/supabase --version
 ```
 
+## Type Generation
+
+Generated database types live at `lib/database.types.ts`.
+
+Regenerate them after schema changes with:
+
+```sh
+/opt/homebrew/bin/supabase gen types typescript --linked --schema public > lib/database.types.ts
+```
+
 Remote Supabase CLI commands require an authenticated shell. If Codex cannot see the
 Supabase login token, run remote commands from your local terminal or provide a temporary
 `SUPABASE_ACCESS_TOKEN` in the environment.

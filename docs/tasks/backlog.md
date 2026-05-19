@@ -34,14 +34,14 @@ This backlog is ordered by milestone. Pull only the next ready items into `curre
 ### DB-005: Add typed database contract
 
 - Type: Backend
-- Status: Todo
+- Status: Done
 - Priority: P1
 - Depends On: DB-003E
 - Acceptance Criteria:
   - App has generated or maintained TypeScript types for Supabase tables.
   - Supabase client uses the database type.
 - Implementation Notes:
-  - Prefer generated types once Supabase CLI is available.
+  - Completed by `DB-003E`; generated types live at `lib/database.types.ts`.
 
 ### DB-006: Add trade persistence service
 

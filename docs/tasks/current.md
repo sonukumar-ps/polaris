@@ -140,7 +140,7 @@ This is the near-term sequential queue. Work from top to bottom.
 ### DB-003E: Generate database TypeScript types
 
 - Type: Backend
-- Status: Todo
+- Status: Done
 - Priority: P1
 - Depends On: DB-003D
 - Acceptance Criteria:
@@ -148,6 +148,9 @@ This is the near-term sequential queue. Work from top to bottom.
   - Supabase client is typed with the generated database type.
 - Implementation Notes:
   - Store generated types in a stable app path and avoid manual edits.
+  - Generated types live at `lib/database.types.ts`.
+  - Supabase client is typed with `Database`.
+  - Verified with `npm run typecheck`.
 
 ### DB-004: Verify RLS behavior
 
