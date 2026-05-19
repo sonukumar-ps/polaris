@@ -43,6 +43,8 @@ Preferred migration workflow:
 - Install path verified: `/opt/homebrew/bin/supabase`
 - Version verified: `2.98.2`
 - Linked project ref verified: `nytguikgehrallvesmql`
+- Core migration applied and recorded: `202605190001`
+- Optional event trigger migration applied and recorded: `202605190002`
 - Version check command:
 
 ```sh

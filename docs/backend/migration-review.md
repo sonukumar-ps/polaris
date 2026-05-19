@@ -32,5 +32,8 @@ event trigger intended to enable RLS automatically on future `public` tables.
 
 ## Application Status
 
-Not applied yet. Apply the core migration during `DB-003D`. Apply the optional event
-trigger migration only after confirming permissions.
+Core migration `202605190001` applied to Supabase dev on 2026-05-19.
+
+Optional event trigger migration `202605190002` applied to Supabase dev on 2026-05-19.
+The event trigger `enable_rls_on_public_table_create` exists and is enabled for
+`ddl_command_end`.

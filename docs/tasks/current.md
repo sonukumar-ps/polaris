@@ -123,7 +123,7 @@ This is the near-term sequential queue. Work from top to bottom.
 ### DB-003D: Apply core migration to Supabase dev
 
 - Type: Backend
-- Status: Todo
+- Status: Done
 - Priority: P0
 - Depends On: DB-003C
 - Acceptance Criteria:
@@ -131,7 +131,11 @@ This is the near-term sequential queue. Work from top to bottom.
   - No seed or user app data is required.
 - Implementation Notes:
   - Apply only `202605190001_initial_schema.sql` first.
-  - Apply `202605190002_optional_rls_event_trigger.sql` only after confirming event trigger permissions.
+  - Applied `202605190002_optional_rls_event_trigger.sql` after the core migration.
+  - Applied core migration with `supabase db query --linked --file`.
+  - Repaired migration history so `202605190001` and `202605190002` are recorded as applied.
+  - Verified RLS is enabled on all eight core public tables.
+  - Verified event trigger `enable_rls_on_public_table_create` exists and is enabled.
 
 ### DB-003E: Generate database TypeScript types
 

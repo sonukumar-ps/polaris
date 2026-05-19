@@ -27,7 +27,7 @@ This file is the high-level product roadmap. Detailed execution lives in `curren
 - `[x]` Add Supabase client package and shared client module
 - `[x]` Create initial database migration
 - `[x]` Enable Row Level Security policies
-- `[ ]` Apply migration to Supabase
+- `[x]` Apply core migration to Supabase
 - `[ ]` Verify RLS behavior
 
 ### Authentication
