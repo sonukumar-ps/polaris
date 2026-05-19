@@ -35,4 +35,9 @@ npm run android
 
 ## Project Tracking
 
-Until a dedicated project tracker is introduced, work is tracked in [`docs/tasks/roadmap.md`](./docs/tasks/roadmap.md).
+Until a dedicated project tracker is introduced, work is tracked in [`docs/tasks`](./docs/tasks/README.md).
+
+- [`docs/tasks/current.md`](./docs/tasks/current.md): next sequential work queue.
+- [`docs/tasks/backlog.md`](./docs/tasks/backlog.md): groomed backlog by milestone.
+- [`docs/tasks/roadmap.md`](./docs/tasks/roadmap.md): high-level V1/V2 roadmap.
+- [`docs/tasks/decisions.md`](./docs/tasks/decisions.md): product and architecture decisions.
