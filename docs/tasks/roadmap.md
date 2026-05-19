@@ -17,17 +17,17 @@ This file is the project tracker while Polaris is being built without a separate
 - `[x]` Configure TypeScript strict mode and path alias
 - `[x]` Add web, iOS, and Android app configuration
 - `[x]` Add in-repo task tracking
-- `[ ]` Install dependencies and generate lockfile
+- `[x]` Install dependencies and generate lockfile
 - `[ ]` Verify app boots on web
 - `[ ]` Verify app boots in Expo Go or a development build
 
 ### Backend Setup
 
-- `[ ]` Create Supabase project
-- `[ ]` Add Supabase client package
-- `[ ]` Configure environment variables
-- `[ ]` Create initial database migration
-- `[ ]` Enable Row Level Security policies
+- `[x]` Create Supabase project
+- `[x]` Add Supabase client package
+- `[x]` Configure environment variables
+- `[x]` Create initial database migration
+- `[x]` Enable Row Level Security policies
 
 ### Authentication
 
@@ -75,3 +75,4 @@ This file is the project tracker while Polaris is being built without a separate
 | 2026-05-19 | Use Expo + React Native + Expo Router | One TypeScript codebase for web, iOS, and Android. |
 | 2026-05-19 | Use Supabase/PostgreSQL for backend | Strong fit for relational trade history and financial analytics. |
 | 2026-05-19 | Track work in `docs/tasks/roadmap.md` | Keeps product planning in git until a dedicated project tracker is needed. |
+| 2026-05-19 | Add an RLS event trigger guardrail | Future `public` tables should have RLS enabled automatically, while policies remain explicit. |
