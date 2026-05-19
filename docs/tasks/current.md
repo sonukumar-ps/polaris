@@ -155,7 +155,7 @@ This is the near-term sequential queue. Work from top to bottom.
 ### DB-004: Verify RLS behavior
 
 - Type: QA
-- Status: Todo
+- Status: Done
 - Priority: P0
 - Depends On: DB-003D
 - Acceptance Criteria:
@@ -164,6 +164,8 @@ This is the near-term sequential queue. Work from top to bottom.
   - Shared/reference data behavior is documented for assets.
 - Implementation Notes:
   - Create minimal test rows only if needed and clean them up afterward.
+  - Initial behavior test found missing `authenticated` table grants; fixed with migration `202605190003`.
+  - Verification results are documented in `docs/backend/rls-verification.md`.
 
 ### AUTH-001: Build auth route structure
 

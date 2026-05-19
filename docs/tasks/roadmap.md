@@ -28,7 +28,7 @@ This file is the high-level product roadmap. Detailed execution lives in `curren
 - `[x]` Create initial database migration
 - `[x]` Enable Row Level Security policies
 - `[x]` Apply core migration to Supabase
-- `[ ]` Verify RLS behavior
+- `[x]` Verify RLS behavior
 
 ### Authentication
 

@@ -45,6 +45,7 @@ Preferred migration workflow:
 - Linked project ref verified: `nytguikgehrallvesmql`
 - Core migration applied and recorded: `202605190001`
 - Optional event trigger migration applied and recorded: `202605190002`
+- App role grants migration applied and recorded: `202605190003`
 - Version check command:
 
 ```sh
@@ -76,6 +77,8 @@ The initial migration creates:
 - Trade images
 - Daily account snapshots
 - Row Level Security policies for user-owned data
+
+RLS verification results live in `docs/backend/rls-verification.md`.
 
 The event trigger is a guardrail, not a replacement for policies. Every table still needs
 explicit policies before client-side access should be expected to work.

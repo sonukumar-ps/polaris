@@ -37,3 +37,10 @@ Core migration `202605190001` applied to Supabase dev on 2026-05-19.
 Optional event trigger migration `202605190002` applied to Supabase dev on 2026-05-19.
 The event trigger `enable_rls_on_public_table_create` exists and is enabled for
 `ddl_command_end`.
+
+Grant migration `202605190003` added after RLS behavior testing showed that policies
+existed but the `authenticated` role lacked table privileges. It grants authenticated
+app users table access that remains constrained by RLS policies.
+
+Migration `202605190003` applied to Supabase dev on 2026-05-19 and is recorded in
+Supabase migration history.
