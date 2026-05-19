@@ -1,6 +1,6 @@
 # Polaris Roadmap
 
-This file is the project tracker while Polaris is being built without a separate tool.
+This file is the high-level product roadmap. Detailed execution lives in `current.md` and `backlog.md`.
 
 ## Status Legend
 
@@ -23,11 +23,12 @@ This file is the project tracker while Polaris is being built without a separate
 
 ### Backend Setup
 
-- `[x]` Create Supabase project
-- `[x]` Add Supabase client package
-- `[x]` Configure environment variables
-- `[x]` Create initial database migration
-- `[x]` Enable Row Level Security policies
+- `[x]` Create Supabase project and add local env values
+- `[ ]` Add Supabase client package and shared client module
+- `[ ]` Create initial database migration
+- `[ ]` Enable Row Level Security policies
+- `[ ]` Apply migration to Supabase
+- `[ ]` Verify RLS behavior
 
 ### Authentication
 
