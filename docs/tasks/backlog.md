@@ -36,7 +36,7 @@ This backlog is ordered by milestone. Pull only the next ready items into `curre
 - Type: Backend
 - Status: Todo
 - Priority: P1
-- Depends On: DB-003
+- Depends On: DB-003E
 - Acceptance Criteria:
   - App has generated or maintained TypeScript types for Supabase tables.
   - Supabase client uses the database type.

@@ -48,7 +48,7 @@ This is the near-term sequential queue. Work from top to bottom.
 ### DB-001: Add Supabase client and local setup files
 
 - Type: Backend
-- Status: Todo
+- Status: Done
 - Priority: P0
 - Depends On: SETUP-001
 - Acceptance Criteria:
@@ -59,11 +59,12 @@ This is the near-term sequential queue. Work from top to bottom.
 - Implementation Notes:
   - Use `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_ANON_KEY`.
   - Keep `.env` ignored.
+  - Verified with `npm run typecheck`.
 
 ### DB-002: Create initial database migration
 
 - Type: Backend
-- Status: Todo
+- Status: Done
 - Priority: P0
 - Depends On: DB-001
 - Acceptance Criteria:
@@ -73,27 +74,83 @@ This is the near-term sequential queue. Work from top to bottom.
 - Implementation Notes:
   - Include profiles, accounts, assets, trades, tags, trade tags, trade images, and daily account snapshots.
   - Do not run the migration until explicitly requested.
+  - Reviewed in `docs/backend/migration-review.md`.
 
-### DB-003: Apply initial migration to Supabase
+### DB-003A: Install and verify Supabase CLI
+
+- Type: Project Setup
+- Status: Done
+- Priority: P0
+- Depends On: DB-002
+- Acceptance Criteria:
+  - Supabase CLI is available locally.
+  - CLI version can be printed.
+  - Setup docs explain how migrations will be applied.
+- Implementation Notes:
+  - Prefer a project dev dependency or documented Homebrew install path.
+  - Do not link the project or run migrations in this task.
+  - Verified Homebrew CLI at `/opt/homebrew/bin/supabase`, version `2.98.2`.
+
+### DB-003B: Link Supabase dev project
+
+- Type: Backend
+- Status: Done
+- Priority: P0
+- Depends On: DB-003A
+- Acceptance Criteria:
+  - Local repo is linked to the intended Supabase dev project.
+  - Project reference is documented without exposing secrets.
+  - No migrations are applied yet.
+- Implementation Notes:
+  - Requires Supabase access token or interactive login.
+  - Linked project ref verified as `nytguikgehrallvesmql`.
+  - Codex shell still cannot use remote CLI commands without `SUPABASE_ACCESS_TOKEN`.
+
+### DB-003C: Split optional RLS event trigger migration
+
+- Type: Backend
+- Status: Done
+- Priority: P0
+- Depends On: DB-003B
+- Acceptance Criteria:
+  - Core schema migration can apply without relying on event trigger privileges.
+  - Optional event trigger guardrail lives in a separate migration or documented follow-up.
+- Implementation Notes:
+  - Keep explicit RLS enable statements in the core migration.
+  - Core schema is `202605190001_initial_schema.sql`.
+  - Optional event trigger guardrail is `202605190002_optional_rls_event_trigger.sql`.
+
+### DB-003D: Apply core migration to Supabase dev
 
 - Type: Backend
 - Status: Todo
 - Priority: P0
-- Depends On: DB-002
+- Depends On: DB-003C
 - Acceptance Criteria:
-  - Tables, enums, indexes, and RLS policies exist in Supabase.
-  - Any event trigger permission issue is captured and handled without weakening table-level RLS.
+  - Tables, enums, indexes, and RLS policies exist in the dev Supabase project.
   - No seed or user app data is required.
 - Implementation Notes:
-  - Requires a privileged Supabase migration path, not the anon key.
-  - Prefer Supabase CLI if configured; otherwise use a database URL with migration privileges.
+  - Apply only `202605190001_initial_schema.sql` first.
+  - Apply `202605190002_optional_rls_event_trigger.sql` only after confirming event trigger permissions.
+
+### DB-003E: Generate database TypeScript types
+
+- Type: Backend
+- Status: Todo
+- Priority: P1
+- Depends On: DB-003D
+- Acceptance Criteria:
+  - App has generated TypeScript database types.
+  - Supabase client is typed with the generated database type.
+- Implementation Notes:
+  - Store generated types in a stable app path and avoid manual edits.
 
 ### DB-004: Verify RLS behavior
 
 - Type: QA
 - Status: Todo
 - Priority: P0
-- Depends On: DB-003
+- Depends On: DB-003D
 - Acceptance Criteria:
   - Anonymous access is denied where expected.
   - Authenticated users can access only their own user-owned rows.
