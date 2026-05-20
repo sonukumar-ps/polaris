@@ -187,7 +187,7 @@ This is the near-term sequential queue. Work from top to bottom.
 ### AUTH-002: Implement sign up, sign in, and sign out
 
 - Type: Feature
-- Status: Todo
+- Status: Done
 - Priority: P0
 - Depends On: AUTH-001
 - Acceptance Criteria:
@@ -198,6 +198,10 @@ This is the near-term sequential queue. Work from top to bottom.
 - Implementation Notes:
   - Keep error states visible and plain.
   - Avoid adding OAuth until after V1 email auth works.
+  - Added email/password sign-in and sign-up form.
+  - Added protected home sign-out action.
+  - Supabase Auth endpoint smoke test returned expected invalid-credentials response.
+  - Verified with `npm run typecheck` and `npm run lint`.
 
 ### AUTH-003: Create profile row on signup
 

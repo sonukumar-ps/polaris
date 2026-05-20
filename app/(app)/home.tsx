@@ -1,4 +1,6 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+
+import { supabase } from '@/lib/supabase';
 
 const metrics = [
   { label: 'Realized P&L', value: '$0.00' },
@@ -7,15 +9,28 @@ const metrics = [
 ];
 
 export default function HomeScreen() {
+  async function handleSignOut() {
+    await supabase.auth.signOut();
+  }
+
   return (
     <View style={styles.screen}>
-      <View style={styles.header}>
-        <Text style={styles.eyebrow}>Polaris Trade Journal</Text>
-        <Text style={styles.title}>Log trades. Review patterns. Improve decisions.</Text>
-        <Text style={styles.subtitle}>
-          V1 starts with manual trade logging, chart screenshots, strategy tags, emotional
-          context, and clean P&L visibility across web, iOS, and Android.
-        </Text>
+      <View style={styles.topBar}>
+        <View style={styles.header}>
+          <Text style={styles.eyebrow}>Polaris Trade Journal</Text>
+          <Text style={styles.title}>Log trades. Review patterns. Improve decisions.</Text>
+          <Text style={styles.subtitle}>
+            V1 starts with manual trade logging, chart screenshots, strategy tags, emotional
+            context, and clean P&L visibility across web, iOS, and Android.
+          </Text>
+        </View>
+
+        <Pressable
+          onPress={handleSignOut}
+          style={({ pressed }) => [styles.signOutButton, pressed && styles.signOutButtonPressed]}
+        >
+          <Text style={styles.signOutButtonText}>Sign out</Text>
+        </Pressable>
       </View>
 
       <View style={styles.metricsGrid}>
@@ -47,7 +62,14 @@ const styles = StyleSheet.create({
   },
   header: {
     gap: 12,
-    maxWidth: 760,
+    maxWidth: 760
+  },
+  topBar: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 16,
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
     paddingTop: 64
   },
   eyebrow: {
@@ -107,5 +129,22 @@ const styles = StyleSheet.create({
     color: '#CBD5E1',
     fontSize: 15,
     lineHeight: 23
+  },
+  signOutButton: {
+    minHeight: 40,
+    justifyContent: 'center',
+    borderRadius: 8,
+    borderColor: '#CBD5E1',
+    borderWidth: 1,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 14
+  },
+  signOutButtonPressed: {
+    opacity: 0.7
+  },
+  signOutButtonText: {
+    color: '#0F172A',
+    fontSize: 14,
+    fontWeight: '700'
   }
 });
