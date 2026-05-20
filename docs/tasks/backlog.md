@@ -87,7 +87,7 @@ This backlog is ordered by milestone. Pull only the next ready items into `curre
 ### TRADE-002: Persist manual trades
 
 - Type: Feature
-- Status: Todo
+- Status: Done
 - Priority: P0
 - Depends On: DB-006
 - Acceptance Criteria:
@@ -96,6 +96,10 @@ This backlog is ordered by milestone. Pull only the next ready items into `curre
   - User can open a trade detail view.
 - Implementation Notes:
   - Save asset records before or during trade creation as needed.
+  - Manual trade form now saves through the typed trade service.
+  - Added saved trade list at `/trades`.
+  - Added trade detail view at `/trades/[tradeId]`.
+  - Verified with `npm run typecheck` and `npm run lint`.
 
 ### TRADE-003: Calculate realized P&L
 

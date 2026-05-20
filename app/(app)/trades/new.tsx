@@ -1,4 +1,4 @@
-import { Link } from 'expo-router';
+import { Link, useRouter } from 'expo-router';
 import type { Href } from 'expo-router';
 import { useMemo, useState } from 'react';
 import {
@@ -11,6 +11,8 @@ import {
   TextInput,
   View
 } from 'react-native';
+
+import { createManualTrade } from '@/lib/trades';
 
 type Direction = 'long' | 'short';
 
@@ -41,6 +43,7 @@ const initialDraft: TradeDraft = {
 };
 
 const HOME_ROUTE = '/home' as Href;
+const TRADES_ROUTE = '/trades' as Href;
 
 function parsePositiveNumber(value: string) {
   const parsed = Number(value);
@@ -79,6 +82,14 @@ function validateDraft(draft: TradeDraft) {
     errors.openedAt = 'Opened date is required.';
   }
 
+  if (draft.closedAt && !draft.exitPrice) {
+    errors.exitPrice = 'Exit price is required for closed trades.';
+  }
+
+  if (draft.exitPrice && !draft.closedAt) {
+    errors.closedAt = 'Closed date is required when an exit price is entered.';
+  }
+
   return errors;
 }
 
@@ -103,9 +114,11 @@ function calculatePreview(draft: TradeDraft) {
 }
 
 export default function NewTradeScreen() {
+  const router = useRouter();
   const [draft, setDraft] = useState<TradeDraft>(initialDraft);
   const [errors, setErrors] = useState<ValidationErrors>({});
-  const [savedDraft, setSavedDraft] = useState<TradeDraft | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   const preview = useMemo(() => calculatePreview(draft), [draft]);
 
@@ -118,19 +131,39 @@ export default function NewTradeScreen() {
       ...current,
       [key]: undefined
     }));
-    setSavedDraft(null);
+    setSubmitError(null);
   }
 
-  function handleReviewDraft() {
+  async function handleSaveTrade() {
     const nextErrors = validateDraft(draft);
     setErrors(nextErrors);
+    setSubmitError(null);
 
     if (Object.keys(nextErrors).length > 0) {
-      setSavedDraft(null);
       return;
     }
 
-    setSavedDraft(draft);
+    setIsSaving(true);
+
+    try {
+      const savedTrade = await createManualTrade({
+        closedAt: draft.closedAt ? toDateTime(draft.closedAt) : null,
+        direction: draft.direction,
+        entryPrice: Number(draft.entryPrice),
+        exitPrice: draft.exitPrice ? Number(draft.exitPrice) : null,
+        fees: Number(draft.fees || '0'),
+        notes: draft.notes,
+        openedAt: toDateTime(draft.openedAt),
+        quantity: Number(draft.size),
+        symbol: draft.symbol
+      });
+
+      router.replace(`/trades/${savedTrade.id}` as Href);
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : 'Could not save trade.');
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   return (
@@ -143,10 +176,13 @@ export default function NewTradeScreen() {
           <Link href={HOME_ROUTE} style={styles.backLink}>
             Back
           </Link>
+          <Link href={TRADES_ROUTE} style={styles.secondaryLink}>
+            View saved trades
+          </Link>
           <Text style={styles.eyebrow}>Manual Trade</Text>
-          <Text style={styles.title}>Log a trade draft</Text>
+          <Text style={styles.title}>Log a trade</Text>
           <Text style={styles.subtitle}>
-            Capture the trade shape locally first. Persistence lands in the next trade task.
+            Save a manual trade to your journal. Tags and screenshots come next.
           </Text>
         </View>
 
@@ -248,11 +284,17 @@ export default function NewTradeScreen() {
             value={draft.notes}
           />
 
+          {submitError ? <Text style={styles.formError}>{submitError}</Text> : null}
+
           <Pressable
-            onPress={handleReviewDraft}
-            style={({ pressed }) => [styles.primaryButton, pressed && styles.primaryButtonPressed]}
+            disabled={isSaving}
+            onPress={handleSaveTrade}
+            style={({ pressed }) => [
+              styles.primaryButton,
+              (pressed || isSaving) && styles.primaryButtonPressed
+            ]}
           >
-            <Text style={styles.primaryButtonText}>Review draft</Text>
+            <Text style={styles.primaryButtonText}>{isSaving ? 'Saving...' : 'Save trade'}</Text>
           </Pressable>
         </View>
 
@@ -263,15 +305,14 @@ export default function NewTradeScreen() {
               ? `Gross P&L ${preview.grossPnl.toFixed(2)} | Net P&L ${preview.netPnl.toFixed(2)}`
               : 'Enter entry, exit, size, and fees to preview P&L.'}
           </Text>
-          {savedDraft ? (
-            <Text style={styles.successText}>
-              Draft ready: {savedDraft.direction.toUpperCase()} {savedDraft.symbol.trim().toUpperCase()}
-            </Text>
-          ) : null}
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
+}
+
+function toDateTime(date: string) {
+  return new Date(`${date}T00:00:00.000Z`).toISOString();
 }
 
 type FieldProps = {
@@ -331,6 +372,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700'
   },
+  secondaryLink: {
+    color: '#475569',
+    fontSize: 14,
+    fontWeight: '700'
+  },
   eyebrow: {
     color: '#2563EB',
     fontSize: 14,
@@ -385,6 +431,11 @@ const styles = StyleSheet.create({
   errorText: {
     color: '#B91C1C',
     fontSize: 13
+  },
+  formError: {
+    color: '#B91C1C',
+    fontSize: 14,
+    fontWeight: '700'
   },
   twoColumn: {
     flexDirection: 'row',
@@ -453,9 +504,4 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 22
   },
-  successText: {
-    color: '#166534',
-    fontSize: 14,
-    fontWeight: '700'
-  }
 });

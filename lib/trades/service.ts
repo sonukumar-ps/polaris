@@ -32,6 +32,10 @@ export type ListTradesOptions = {
   limit?: number;
 };
 
+export type TradeSummary = TradeRow & {
+  asset: Pick<AssetRow, 'asset_class' | 'id' | 'symbol'> | null;
+};
+
 export class TradeServiceError extends Error {
   constructor(message: string) {
     super(message);
@@ -90,6 +94,64 @@ export async function listTrades(options: ListTradesOptions = {}): Promise<Trade
   }
 
   return data;
+}
+
+export async function listTradeSummaries(options: ListTradesOptions = {}): Promise<TradeSummary[]> {
+  const trades = await listTrades(options);
+
+  if (trades.length === 0) {
+    return [];
+  }
+
+  const assetIds = Array.from(new Set(trades.map((trade) => trade.asset_id)));
+  const { data: assets, error } = await supabase
+    .from('assets')
+    .select('asset_class, id, symbol')
+    .in('id', assetIds);
+
+  if (error) {
+    throw toTradeServiceError('Could not load trade assets.', error);
+  }
+
+  const assetsById = new Map(assets.map((asset) => [asset.id, asset]));
+
+  return trades.map((trade) => ({
+    ...trade,
+    asset: assetsById.get(trade.asset_id) ?? null
+  }));
+}
+
+export async function getTrade(tradeId: string): Promise<TradeSummary> {
+  const userId = await requireUserId();
+  const { data: trade, error: tradeError } = await supabase
+    .from('trades')
+    .select('*')
+    .eq('id', tradeId)
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (tradeError) {
+    throw toTradeServiceError('Could not load trade.', tradeError);
+  }
+
+  if (!trade) {
+    throw new TradeServiceError('Trade was not found.');
+  }
+
+  const { data: asset, error: assetError } = await supabase
+    .from('assets')
+    .select('asset_class, id, symbol')
+    .eq('id', trade.asset_id)
+    .maybeSingle();
+
+  if (assetError) {
+    throw toTradeServiceError('Could not load trade asset.', assetError);
+  }
+
+  return {
+    ...trade,
+    asset: asset ?? null
+  };
 }
 
 async function findOrCreateAsset(input: {

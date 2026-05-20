@@ -11,6 +11,7 @@ const metrics = [
 ];
 
 const NEW_TRADE_ROUTE = '/trades/new' as Href;
+const TRADES_ROUTE = '/trades' as Href;
 
 export default function HomeScreen() {
   async function handleSignOut() {
@@ -49,14 +50,21 @@ export default function HomeScreen() {
       <View style={styles.panel}>
         <Text style={styles.panelTitle}>Next build target</Text>
         <Text style={styles.panelText}>
-          Start with local manual trade entry, then connect persistence once the form
-          shape is stable.
+          Manual trade persistence is online. Log a trade, then review saved entries
+          from the journal list.
         </Text>
-        <Link href={NEW_TRADE_ROUTE} asChild>
-          <Pressable style={({ pressed }) => [styles.primaryButton, pressed && styles.primaryButtonPressed]}>
-            <Text style={styles.primaryButtonText}>Log trade</Text>
-          </Pressable>
-        </Link>
+        <View style={styles.actions}>
+          <Link href={NEW_TRADE_ROUTE} asChild>
+            <Pressable style={({ pressed }) => [styles.primaryButton, pressed && styles.primaryButtonPressed]}>
+              <Text style={styles.primaryButtonText}>Log trade</Text>
+            </Pressable>
+          </Link>
+          <Link href={TRADES_ROUTE} asChild>
+            <Pressable style={({ pressed }) => [styles.secondaryButton, pressed && styles.primaryButtonPressed]}>
+              <Text style={styles.secondaryButtonText}>View trades</Text>
+            </Pressable>
+          </Link>
+        </View>
       </View>
     </View>
   );
@@ -140,6 +148,11 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 23
   },
+  actions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10
+  },
   signOutButton: {
     minHeight: 40,
     justifyContent: 'center',
@@ -170,6 +183,20 @@ const styles = StyleSheet.create({
   },
   primaryButtonText: {
     color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700'
+  },
+  secondaryButton: {
+    alignSelf: 'flex-start',
+    minHeight: 42,
+    justifyContent: 'center',
+    borderRadius: 8,
+    borderColor: '#475569',
+    borderWidth: 1,
+    paddingHorizontal: 16
+  },
+  secondaryButtonText: {
+    color: '#E2E8F0',
     fontSize: 14,
     fontWeight: '700'
   }
