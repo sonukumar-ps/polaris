@@ -122,7 +122,7 @@ This backlog is ordered by milestone. Pull only the next ready items into `curre
 ### TRADE-004: Add simple tagging
 
 - Type: Feature
-- Status: Todo
+- Status: Done
 - Priority: P0
 - Depends On: TRADE-002
 - Acceptance Criteria:
@@ -130,6 +130,11 @@ This backlog is ordered by milestone. Pull only the next ready items into `curre
   - Trades can be filtered by tag.
 - Implementation Notes:
   - Use the many-to-many trade/tag model from the database plan.
+  - Manual trade form can save strategy, emotion, mistake, setup, and custom tags.
+  - Tag records are reused by user/type/name and attached through `trade_tags`.
+  - Saved trade list can filter by existing tags.
+  - Trade list and detail views display attached tags.
+  - Verified with `npm run typecheck` and `npm run lint`.
 
 ### TRADE-005: Add chart screenshot uploads
 

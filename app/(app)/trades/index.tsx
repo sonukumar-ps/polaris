@@ -3,14 +3,16 @@ import type { Href } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { listTradeSummaries } from '@/lib/trades';
-import type { TradeSummary } from '@/lib/trades';
+import { listTags, listTradeSummaries } from '@/lib/trades';
+import type { JournalTag, TradeSummary } from '@/lib/trades';
 
 const HOME_ROUTE = '/home' as Href;
 const NEW_TRADE_ROUTE = '/trades/new' as Href;
 
 export default function TradesScreen() {
   const [trades, setTrades] = useState<TradeSummary[]>([]);
+  const [tags, setTags] = useState<JournalTag[]>([]);
+  const [selectedTagId, setSelectedTagId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -23,10 +25,14 @@ export default function TradesScreen() {
         setError(null);
 
         try {
-          const loadedTrades = await listTradeSummaries();
+          const [loadedTrades, loadedTags] = await Promise.all([
+            listTradeSummaries({ tagId: selectedTagId ?? undefined }),
+            listTags()
+          ]);
 
           if (isActive) {
             setTrades(loadedTrades);
+            setTags(loadedTags);
           }
         } catch (loadError) {
           if (isActive) {
@@ -44,7 +50,7 @@ export default function TradesScreen() {
       return () => {
         isActive = false;
       };
-    }, [])
+    }, [selectedTagId])
   );
 
   return (
@@ -62,6 +68,42 @@ export default function TradesScreen() {
           <Text style={styles.primaryButtonText}>Log trade</Text>
         </Pressable>
       </Link>
+
+      {tags.length > 0 ? (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+          <View style={styles.filters}>
+            <Pressable
+              onPress={() => setSelectedTagId(null)}
+              style={[styles.filterChip, selectedTagId === null && styles.filterChipSelected]}
+            >
+              <Text
+                style={[
+                  styles.filterChipText,
+                  selectedTagId === null && styles.filterChipTextSelected
+                ]}
+              >
+                All
+              </Text>
+            </Pressable>
+            {tags.map((tag) => (
+              <Pressable
+                key={tag.id}
+                onPress={() => setSelectedTagId(tag.id)}
+                style={[styles.filterChip, selectedTagId === tag.id && styles.filterChipSelected]}
+              >
+                <Text
+                  style={[
+                    styles.filterChipText,
+                    selectedTagId === tag.id && styles.filterChipTextSelected
+                  ]}
+                >
+                  {tag.name}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        </ScrollView>
+      ) : null}
 
       {isLoading ? (
         <View style={styles.statePanel}>
@@ -93,6 +135,15 @@ export default function TradesScreen() {
                   {trade.direction.toUpperCase()} | {trade.status.toUpperCase()} |{' '}
                   {formatDate(trade.opened_at)}
                 </Text>
+                {trade.tags.length > 0 ? (
+                  <View style={styles.tags}>
+                    {trade.tags.map((tag) => (
+                      <Text key={tag.id} style={styles.tagChip}>
+                        {tag.name}
+                      </Text>
+                    ))}
+                  </View>
+                ) : null}
               </View>
               <View style={styles.tradeNumbers}>
                 <Text style={[styles.price, trade.net_pnl !== null && pnlStyle(trade.net_pnl)]}>
@@ -193,6 +244,32 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     padding: 18
   },
+  filters: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingVertical: 2
+  },
+  filterChip: {
+    minHeight: 36,
+    justifyContent: 'center',
+    borderRadius: 8,
+    borderColor: '#CBD5E1',
+    borderWidth: 1,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 12
+  },
+  filterChipSelected: {
+    borderColor: '#2563EB',
+    backgroundColor: '#EFF6FF'
+  },
+  filterChipText: {
+    color: '#475569',
+    fontSize: 13,
+    fontWeight: '700'
+  },
+  filterChipTextSelected: {
+    color: '#1D4ED8'
+  },
   stateTitle: {
     color: '#0F172A',
     fontSize: 18,
@@ -236,6 +313,22 @@ const styles = StyleSheet.create({
     color: '#64748B',
     fontSize: 13,
     fontWeight: '600'
+  },
+  tags: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: 4
+  },
+  tagChip: {
+    overflow: 'hidden',
+    borderRadius: 6,
+    backgroundColor: '#F1F5F9',
+    color: '#334155',
+    fontSize: 12,
+    fontWeight: '700',
+    paddingHorizontal: 8,
+    paddingVertical: 4
   },
   tradeNumbers: {
     alignItems: 'flex-end',

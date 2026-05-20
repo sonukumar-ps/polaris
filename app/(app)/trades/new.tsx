@@ -25,6 +25,11 @@ type TradeDraft = {
   fees: string;
   openedAt: string;
   closedAt: string;
+  strategyTag: string;
+  emotionTag: string;
+  mistakeTag: string;
+  setupTag: string;
+  customTags: string;
   notes: string;
 };
 
@@ -39,6 +44,11 @@ const initialDraft: TradeDraft = {
   fees: '0',
   openedAt: new Date().toISOString().slice(0, 10),
   closedAt: '',
+  strategyTag: '',
+  emotionTag: '',
+  mistakeTag: '',
+  setupTag: '',
+  customTags: '',
   notes: ''
 };
 
@@ -154,7 +164,8 @@ export default function NewTradeScreen() {
         notes: draft.notes,
         openedAt: toDateTime(draft.openedAt),
         quantity: Number(draft.size),
-        symbol: draft.symbol
+        symbol: draft.symbol,
+        tags: buildTagInputs(draft)
       });
 
       router.replace(`/trades/${savedTrade.id}` as Href);
@@ -275,6 +286,43 @@ export default function NewTradeScreen() {
             />
           </View>
 
+          <View style={styles.twoColumn}>
+            <Field
+              label="Strategy tag"
+              onChangeText={(value) => updateField('strategyTag', value)}
+              placeholder="Breakout"
+              value={draft.strategyTag}
+            />
+            <Field
+              label="Emotion tag"
+              onChangeText={(value) => updateField('emotionTag', value)}
+              placeholder="Calm"
+              value={draft.emotionTag}
+            />
+          </View>
+
+          <View style={styles.twoColumn}>
+            <Field
+              label="Mistake tag"
+              onChangeText={(value) => updateField('mistakeTag', value)}
+              placeholder="Chased entry"
+              value={draft.mistakeTag}
+            />
+            <Field
+              label="Setup tag"
+              onChangeText={(value) => updateField('setupTag', value)}
+              placeholder="Opening range"
+              value={draft.setupTag}
+            />
+          </View>
+
+          <Field
+            label="Custom tags"
+            onChangeText={(value) => updateField('customTags', value)}
+            placeholder="Comma-separated tags"
+            value={draft.customTags}
+          />
+
           <Field
             label="Notes"
             multiline
@@ -312,6 +360,16 @@ export default function NewTradeScreen() {
 
 function toDateTime(date: string) {
   return new Date(`${date}T00:00:00.000Z`).toISOString();
+}
+
+function buildTagInputs(draft: TradeDraft) {
+  return [
+    { name: draft.strategyTag, type: 'strategy' as const },
+    { name: draft.emotionTag, type: 'emotion' as const },
+    { name: draft.mistakeTag, type: 'mistake' as const },
+    { name: draft.setupTag, type: 'setup' as const },
+    ...draft.customTags.split(',').map((name) => ({ name, type: 'custom' as const }))
+  ];
 }
 
 type FieldProps = {

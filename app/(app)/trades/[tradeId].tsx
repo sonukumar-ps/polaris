@@ -104,6 +104,18 @@ export default function TradeDetailScreen() {
             <Metric label="Opened" value={formatDate(trade.opened_at)} />
             <Metric label="Closed" value={trade.closed_at ? formatDate(trade.closed_at) : 'Open'} />
           </View>
+          {trade.tags.length > 0 ? (
+            <View style={styles.tagsSection}>
+              <Text style={styles.metricLabel}>Tags</Text>
+              <View style={styles.tags}>
+                {trade.tags.map((tag) => (
+                  <Text key={tag.id} style={styles.tagChip}>
+                    {tag.type}: {tag.name}
+                  </Text>
+                ))}
+              </View>
+            </View>
+          ) : null}
           {trade.notes ? (
             <View style={styles.notes}>
               <Text style={styles.metricLabel}>Notes</Text>
@@ -234,6 +246,27 @@ const styles = StyleSheet.create({
     borderTopColor: '#E2E8F0',
     borderTopWidth: 1,
     paddingTop: 16
+  },
+  tagsSection: {
+    gap: 8,
+    borderTopColor: '#E2E8F0',
+    borderTopWidth: 1,
+    paddingTop: 16
+  },
+  tags: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8
+  },
+  tagChip: {
+    overflow: 'hidden',
+    borderRadius: 6,
+    backgroundColor: '#F1F5F9',
+    color: '#334155',
+    fontSize: 12,
+    fontWeight: '700',
+    paddingHorizontal: 8,
+    paddingVertical: 4
   },
   notesText: {
     color: '#334155',
