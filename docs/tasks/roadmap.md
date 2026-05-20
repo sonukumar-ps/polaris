@@ -34,7 +34,7 @@ This file is the high-level product roadmap. Detailed execution lives in `curren
 
 - `[ ]` Build sign up, sign in, and sign out flows
 - `[ ]` Create profile row on signup
-- `[ ]` Add protected app routes
+- `[x]` Add protected app routes
 
 ### Trade Logging
 
