@@ -7,7 +7,7 @@ This backlog is ordered by milestone. Pull only the next ready items into `curre
 ### SETUP-004: Add code quality baseline
 
 - Type: Project Setup
-- Status: Todo
+- Status: Done
 - Priority: P1
 - Depends On: SETUP-002
 - Acceptance Criteria:
@@ -16,6 +16,9 @@ This backlog is ordered by milestone. Pull only the next ready items into `curre
   - README documents the common development commands.
 - Implementation Notes:
   - Keep tooling aligned with Expo defaults.
+  - Added Expo ESLint config.
+  - `npm run typecheck` passes.
+  - `npm run lint` passes.
 
 ### SETUP-005: Add app configuration assets
 
