@@ -1,3 +1,5 @@
+import { Link } from 'expo-router';
+import type { Href } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { supabase } from '@/lib/supabase';
@@ -7,6 +9,8 @@ const metrics = [
   { label: 'Win rate', value: '0%' },
   { label: 'Trades logged', value: '0' }
 ];
+
+const NEW_TRADE_ROUTE = '/trades/new' as Href;
 
 export default function HomeScreen() {
   async function handleSignOut() {
@@ -45,9 +49,14 @@ export default function HomeScreen() {
       <View style={styles.panel}>
         <Text style={styles.panelTitle}>Next build target</Text>
         <Text style={styles.panelText}>
-          Set up Supabase, define the trade schema, and wire authentication before the
-          first trade-entry form lands.
+          Start with local manual trade entry, then connect persistence once the form
+          shape is stable.
         </Text>
+        <Link href={NEW_TRADE_ROUTE} asChild>
+          <Pressable style={({ pressed }) => [styles.primaryButton, pressed && styles.primaryButtonPressed]}>
+            <Text style={styles.primaryButtonText}>Log trade</Text>
+          </Pressable>
+        </Link>
       </View>
     </View>
   );
@@ -115,6 +124,7 @@ const styles = StyleSheet.create({
   },
   panel: {
     maxWidth: 760,
+    gap: 14,
     borderRadius: 8,
     backgroundColor: '#0F172A',
     padding: 20
@@ -144,6 +154,22 @@ const styles = StyleSheet.create({
   },
   signOutButtonText: {
     color: '#0F172A',
+    fontSize: 14,
+    fontWeight: '700'
+  },
+  primaryButton: {
+    alignSelf: 'flex-start',
+    minHeight: 42,
+    justifyContent: 'center',
+    borderRadius: 8,
+    backgroundColor: '#2563EB',
+    paddingHorizontal: 16
+  },
+  primaryButtonPressed: {
+    opacity: 0.76
+  },
+  primaryButtonText: {
+    color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '700'
   }

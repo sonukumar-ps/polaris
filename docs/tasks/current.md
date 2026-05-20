@@ -222,7 +222,7 @@ This is the near-term sequential queue. Work from top to bottom.
 ### TRADE-001: Build manual trade form skeleton
 
 - Type: Feature
-- Status: Todo
+- Status: Done
 - Priority: P0
 - Depends On: AUTH-003
 - Acceptance Criteria:
@@ -232,3 +232,6 @@ This is the near-term sequential queue. Work from top to bottom.
 - Implementation Notes:
   - Start with local state and validation.
   - Persistence belongs in a follow-up task after the form shape is stable.
+  - Added protected `/trades/new` route.
+  - Added local validation and P&L preview.
+  - Verified with `npm run typecheck` and `npm run lint`.

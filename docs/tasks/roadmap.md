@@ -39,7 +39,7 @@ This file is the high-level product roadmap. Detailed execution lives in `curren
 ### Trade Logging
 
 - `[ ]` Create trade schema
-- `[ ]` Build manual trade-entry form
+- `[x]` Build manual trade-entry form
 - `[ ]` Support open and closed trade states
 - `[ ]` Calculate realized P&L
 - `[ ]` Add trade list and trade detail screens
