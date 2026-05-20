@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase';
 
 import type { Database } from '@/lib/database.types';
+import { calculateRealizedPnl } from './pnl';
 
 type Tables = Database['public']['Tables'];
 
@@ -53,6 +54,16 @@ export async function createManualTrade(input: CreateManualTradeInput): Promise<
   const account = input.accountId
     ? await requireOwnedAccount(input.accountId, userId)
     : await getOrCreateDefaultAccount(userId);
+  const realizedPnl =
+    input.closedAt && input.exitPrice
+      ? calculateRealizedPnl({
+          direction: input.direction,
+          entryPrice: input.entryPrice,
+          exitPrice: input.exitPrice,
+          fees: input.fees ?? 0,
+          quantity: input.quantity
+        })
+      : null;
 
   const insert: TradeInsert = {
     account_id: account.id,
@@ -62,6 +73,8 @@ export async function createManualTrade(input: CreateManualTradeInput): Promise<
     entry_price: input.entryPrice,
     exit_price: input.exitPrice ?? null,
     fees: input.fees ?? 0,
+    gross_pnl: realizedPnl?.grossPnl ?? null,
+    net_pnl: realizedPnl?.netPnl ?? null,
     notes: normalizeOptionalText(input.notes),
     opened_at: input.openedAt,
     quantity: input.quantity,

@@ -104,7 +104,7 @@ This backlog is ordered by milestone. Pull only the next ready items into `curre
 ### TRADE-003: Calculate realized P&L
 
 - Type: Feature
-- Status: Todo
+- Status: Done
 - Priority: P0
 - Depends On: TRADE-002
 - Acceptance Criteria:
@@ -113,6 +113,11 @@ This backlog is ordered by milestone. Pull only the next ready items into `curre
   - Calculation behavior is covered by tests or documented examples.
 - Implementation Notes:
   - Keep formula logic in a pure helper.
+  - Added pure `calculateRealizedPnl` helper.
+  - Closed manual trades now persist `gross_pnl` and `net_pnl`.
+  - Trade list and detail views surface realized net P&L.
+  - Documented formula examples in `docs/trades/pnl-calculations.md`.
+  - Verified with `npm run typecheck` and `npm run lint`.
 
 ### TRADE-004: Add simple tagging
 

@@ -12,7 +12,7 @@ import {
   View
 } from 'react-native';
 
-import { createManualTrade } from '@/lib/trades';
+import { calculateRealizedPnl, createManualTrade } from '@/lib/trades';
 
 type Direction = 'long' | 'short';
 
@@ -103,14 +103,13 @@ function calculatePreview(draft: TradeDraft) {
     return null;
   }
 
-  const directionMultiplier = draft.direction === 'long' ? 1 : -1;
-  const grossPnl = (exitPrice - entryPrice) * size * directionMultiplier;
-  const netPnl = grossPnl - fees;
-
-  return {
-    grossPnl,
-    netPnl
-  };
+  return calculateRealizedPnl({
+    direction: draft.direction,
+    entryPrice,
+    exitPrice,
+    fees,
+    quantity: size
+  });
 }
 
 export default function NewTradeScreen() {

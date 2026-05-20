@@ -89,6 +89,18 @@ export default function TradeDetailScreen() {
             <Metric label="Fees" value={formatNumber(trade.fees)} />
           </View>
           <View style={styles.row}>
+            <Metric
+              label="Gross P&L"
+              value={trade.gross_pnl !== null ? formatCurrency(trade.gross_pnl) : 'Open'}
+              valueStyle={trade.gross_pnl !== null ? pnlStyle(trade.gross_pnl) : undefined}
+            />
+            <Metric
+              label="Net P&L"
+              value={trade.net_pnl !== null ? formatCurrency(trade.net_pnl) : 'Open'}
+              valueStyle={trade.net_pnl !== null ? pnlStyle(trade.net_pnl) : undefined}
+            />
+          </View>
+          <View style={styles.row}>
             <Metric label="Opened" value={formatDate(trade.opened_at)} />
             <Metric label="Closed" value={trade.closed_at ? formatDate(trade.closed_at) : 'Open'} />
           </View>
@@ -104,11 +116,19 @@ export default function TradeDetailScreen() {
   );
 }
 
-function Metric({ label, value }: { label: string; value: string }) {
+function Metric({
+  label,
+  value,
+  valueStyle
+}: {
+  label: string;
+  value: string;
+  valueStyle?: object;
+}) {
   return (
     <View style={styles.metric}>
       <Text style={styles.metricLabel}>{label}</Text>
-      <Text style={styles.metricValue}>{value}</Text>
+      <Text style={[styles.metricValue, valueStyle]}>{value}</Text>
     </View>
   );
 }
@@ -126,6 +146,19 @@ function formatNumber(value: number) {
     maximumFractionDigits: 8,
     minimumFractionDigits: 0
   }).format(value);
+}
+
+function formatCurrency(value: number) {
+  return new Intl.NumberFormat('en', {
+    currency: 'USD',
+    maximumFractionDigits: 2,
+    minimumFractionDigits: 2,
+    style: 'currency'
+  }).format(value);
+}
+
+function pnlStyle(value: number) {
+  return value >= 0 ? styles.profit : styles.loss;
 }
 
 const styles = StyleSheet.create({
@@ -206,5 +239,11 @@ const styles = StyleSheet.create({
     color: '#334155',
     fontSize: 15,
     lineHeight: 23
+  },
+  profit: {
+    color: '#166534'
+  },
+  loss: {
+    color: '#B91C1C'
   }
 });

@@ -95,8 +95,12 @@ export default function TradesScreen() {
                 </Text>
               </View>
               <View style={styles.tradeNumbers}>
-                <Text style={styles.price}>Entry {formatNumber(trade.entry_price)}</Text>
-                <Text style={styles.meta}>Size {formatNumber(trade.quantity)}</Text>
+                <Text style={[styles.price, trade.net_pnl !== null && pnlStyle(trade.net_pnl)]}>
+                  {trade.net_pnl !== null ? formatCurrency(trade.net_pnl) : 'Open'}
+                </Text>
+                <Text style={styles.meta}>
+                  Entry {formatNumber(trade.entry_price)} | Size {formatNumber(trade.quantity)}
+                </Text>
               </View>
             </Pressable>
           </Link>
@@ -119,6 +123,19 @@ function formatNumber(value: number) {
     maximumFractionDigits: 8,
     minimumFractionDigits: 0
   }).format(value);
+}
+
+function formatCurrency(value: number) {
+  return new Intl.NumberFormat('en', {
+    currency: 'USD',
+    maximumFractionDigits: 2,
+    minimumFractionDigits: 2,
+    style: 'currency'
+  }).format(value);
+}
+
+function pnlStyle(value: number) {
+  return value >= 0 ? styles.profit : styles.loss;
 }
 
 const styles = StyleSheet.create({
@@ -228,5 +245,11 @@ const styles = StyleSheet.create({
     color: '#0F172A',
     fontSize: 16,
     fontWeight: '700'
+  },
+  profit: {
+    color: '#166534'
+  },
+  loss: {
+    color: '#B91C1C'
   }
 });
