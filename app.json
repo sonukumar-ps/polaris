@@ -5,7 +5,6 @@
     "scheme": "polaris",
     "version": "0.1.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
     "assetBundlePatterns": [
       "**/*"
@@ -15,15 +14,10 @@
       "bundleIdentifier": "com.polaris.tradejournal"
     },
     "android": {
-      "package": "com.polaris.tradejournal",
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#0F172A"
-      }
+      "package": "com.polaris.tradejournal"
     },
     "web": {
-      "bundler": "metro",
-      "favicon": "./assets/favicon.png"
+      "bundler": "metro"
     },
     "experiments": {
       "typedRoutes": true

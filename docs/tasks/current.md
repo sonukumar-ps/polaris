@@ -170,7 +170,7 @@ This is the near-term sequential queue. Work from top to bottom.
 ### AUTH-001: Build auth route structure
 
 - Type: Feature
-- Status: Done
+- Status: Todo
 - Priority: P0
 - Depends On: DB-004
 - Acceptance Criteria:
@@ -180,9 +180,6 @@ This is the near-term sequential queue. Work from top to bottom.
 - Implementation Notes:
   - Use Expo Router route groups.
   - Keep styling simple until the auth flow works.
-  - Public auth routes live under `app/(auth)`.
-  - Protected app routes live under `app/(app)`.
-  - Verified with `npm run typecheck`.
 
 ### AUTH-002: Implement sign up, sign in, and sign out
 

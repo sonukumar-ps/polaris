@@ -35,20 +35,6 @@ npm run android
 
 Native development boot notes live in [`docs/dev/native-boot.md`](./docs/dev/native-boot.md).
 
-## Quality Checks
-
-Run TypeScript:
-
-```sh
-npm run typecheck
-```
-
-Run ESLint:
-
-```sh
-npm run lint
-```
-
 ## Project Tracking
 
 Until a dedicated project tracker is introduced, work is tracked in [`docs/tasks`](./docs/tasks/README.md).
