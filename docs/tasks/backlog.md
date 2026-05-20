@@ -32,7 +32,7 @@ This backlog is ordered by milestone. Pull only the next ready items into `curre
 - Implementation Notes:
   - Defer until basic brand direction is clearer.
   - Added deterministic Polaris icon, adaptive icon, and favicon.
-  - Asset generation script lives at `scripts/generate_app_assets.py`.
+  - Removed the one-off asset generation script after assets were committed.
   - `npm run typecheck` and `npm run lint` pass after wiring assets.
 
 ## V1: Backend and Data
@@ -52,7 +52,7 @@ This backlog is ordered by milestone. Pull only the next ready items into `curre
 ### DB-006: Add trade persistence service
 
 - Type: Backend
-- Status: Todo
+- Status: Done
 - Priority: P0
 - Depends On: TRADE-001
 - Acceptance Criteria:
@@ -61,6 +61,11 @@ This backlog is ordered by milestone. Pull only the next ready items into `curre
   - RLS prevents cross-user access.
 - Implementation Notes:
   - Keep the service small and query-focused.
+  - Added typed trade service in `lib/trades/service.ts`.
+  - Service requires the current Supabase user before writes and reads.
+  - Manual trade creation creates or reuses an asset and creates or reuses the first active account when no account is supplied.
+  - Trade reads filter by the authenticated user id and still rely on Supabase RLS as the enforcement boundary.
+  - Verified with `npm run typecheck` and `npm run lint`.
 
 ## V1: Authentication
 
