@@ -1,13 +1,12 @@
-import { Redirect } from 'expo-router';
+import { Redirect, Stack } from 'expo-router';
 import type { Href } from 'expo-router';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
 import { useAuth } from '@/lib/auth/session';
 
-const HOME_ROUTE = '/home' as Href;
 const SIGN_IN_ROUTE = '/sign-in' as Href;
 
-export default function IndexRoute() {
+export default function ProtectedLayout() {
   const { isLoading, session } = useAuth();
 
   if (isLoading) {
@@ -18,7 +17,11 @@ export default function IndexRoute() {
     );
   }
 
-  return <Redirect href={session ? HOME_ROUTE : SIGN_IN_ROUTE} />;
+  if (!session) {
+    return <Redirect href={SIGN_IN_ROUTE} />;
+  }
+
+  return <Stack screenOptions={{ headerShown: false }} />;
 }
 
 const styles = StyleSheet.create({
