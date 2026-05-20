@@ -23,7 +23,7 @@ This backlog is ordered by milestone. Pull only the next ready items into `curre
 ### SETUP-005: Add app configuration assets
 
 - Type: Project Setup
-- Status: Todo
+- Status: Done
 - Priority: P2
 - Depends On: SETUP-002
 - Acceptance Criteria:
@@ -31,6 +31,9 @@ This backlog is ordered by milestone. Pull only the next ready items into `curre
   - App still boots after asset references are added.
 - Implementation Notes:
   - Defer until basic brand direction is clearer.
+  - Added deterministic Polaris icon, adaptive icon, and favicon.
+  - Asset generation script lives at `scripts/generate_app_assets.py`.
+  - `npm run typecheck` and `npm run lint` pass after wiring assets.
 
 ## V1: Backend and Data
 
