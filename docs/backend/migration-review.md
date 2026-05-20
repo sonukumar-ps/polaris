@@ -44,3 +44,7 @@ app users table access that remains constrained by RLS policies.
 
 Migration `202605190003` applied to Supabase dev on 2026-05-19 and is recorded in
 Supabase migration history.
+
+Migration `202605200001` creates the `public.handle_new_user()` trigger function and
+`on_auth_user_created` trigger on `auth.users`. It was applied to Supabase dev on
+2026-05-20 and verified with a rollback-only auth user insert.

@@ -46,6 +46,7 @@ Preferred migration workflow:
 - Core migration applied and recorded: `202605190001`
 - Optional event trigger migration applied and recorded: `202605190002`
 - App role grants migration applied and recorded: `202605190003`
+- Profile-on-signup trigger migration applied and recorded: `202605200001`
 - Version check command:
 
 ```sh

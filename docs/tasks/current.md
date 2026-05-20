@@ -206,7 +206,7 @@ This is the near-term sequential queue. Work from top to bottom.
 ### AUTH-003: Create profile row on signup
 
 - Type: Backend
-- Status: Todo
+- Status: Done
 - Priority: P0
 - Depends On: AUTH-002
 - Acceptance Criteria:
@@ -216,6 +216,8 @@ This is the near-term sequential queue. Work from top to bottom.
 - Implementation Notes:
   - Prefer a database trigger if it fits Supabase permissions cleanly.
   - Otherwise, use a client-side upsert immediately after signup/session creation.
+  - Added `public.handle_new_user()` and `on_auth_user_created` trigger.
+  - Verified with a rollback-only auth user insert.
 
 ### TRADE-001: Build manual trade form skeleton
 

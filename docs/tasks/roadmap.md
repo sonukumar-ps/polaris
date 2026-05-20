@@ -33,7 +33,7 @@ This file is the high-level product roadmap. Detailed execution lives in `curren
 ### Authentication
 
 - `[x]` Build sign up, sign in, and sign out flows
-- `[ ]` Create profile row on signup
+- `[x]` Create profile row on signup
 - `[x]` Add protected app routes
 
 ### Trade Logging
