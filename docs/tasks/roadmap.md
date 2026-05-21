@@ -38,33 +38,33 @@ This file is the high-level product roadmap. Detailed execution lives in `curren
 
 ### Trade Logging
 
-- `[ ]` Create trade schema
+- `[x]` Create trade schema
 - `[x]` Build manual trade-entry form
-- `[ ]` Support open and closed trade states
-- `[ ]` Calculate realized P&L
-- `[ ]` Add trade list and trade detail screens
+- `[x]` Support open and closed trade states
+- `[x]` Calculate realized P&L
+- `[x]` Add trade list and trade detail screens
 
 ### Screenshots and Tags
 
-- `[ ]` Add chart screenshot uploads
-- `[ ]` Store screenshots in Supabase Storage
-- `[ ]` Add strategy, emotion, mistake, and setup tags
-- `[ ]` Add tag filters
+- `[x]` Add chart screenshot uploads
+- `[x]` Store screenshots in Supabase Storage
+- `[x]` Add strategy, emotion, mistake, and setup tags
+- `[x]` Add tag filters
 
 ### Dashboard
 
-- `[ ]` Add total realized P&L
-- `[ ]` Add win rate
-- `[ ]` Add average win/loss
-- `[ ]` Add profit factor
-- `[ ]` Add simple equity curve
+- `[x]` Add total realized P&L
+- `[x]` Add win rate
+- `[x]` Add average win/loss
+- `[x]` Add profit factor
+- `[x]` Add simple equity curve
 
 ## Phase 2: V2 Expansion
 
 - `[ ]` Broker import architecture
 - `[ ]` Advanced equity curve analytics
 - `[ ]` Drawdown and rolling performance reports
-- `[ ]` Position sizing calculator
+- `[x]` Position sizing calculator
 - `[ ]` Max daily loss and risk alerts
 - `[ ]` Shareable trade review links
 - `[ ]` Mentor/social review workflow

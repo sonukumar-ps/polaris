@@ -24,6 +24,7 @@ Do not commit `.env`.
 Apply migrations from `supabase/migrations` in filename order.
 
 Review notes for the initial migration live in `docs/backend/migration-review.md`.
+The full schema ERD lives in `docs/backend/erd.md`.
 
 The core schema migration is `202605190001_initial_schema.sql`. The event trigger
 guardrail is intentionally split into `202605190002_optional_rls_event_trigger.sql`

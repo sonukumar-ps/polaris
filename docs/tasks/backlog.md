@@ -218,7 +218,7 @@ This backlog is ordered by milestone. Pull only the next ready items into `curre
 ### V2-003: Risk management calculators
 
 - Type: Feature
-- Status: Todo
+- Status: Done
 - Priority: P2
 - Depends On: TRADE-003
 - Acceptance Criteria:
@@ -226,6 +226,11 @@ This backlog is ordered by milestone. Pull only the next ready items into `curre
   - Risk settings can be reused while logging trades.
 - Implementation Notes:
   - Keep calculators independent from broker integration.
+  - Added pure `calculatePositionSize` helper.
+  - Added protected `/risk` screen with account, risk, entry, stop, and optional target inputs.
+  - Sidebar navigation now exposes the Risk screen.
+  - Calculator shows units, max loss, risk per unit, notional value, and optional R multiple.
+  - Verified with `npm run typecheck` and `npm run lint`.
 
 ### V2-004: Social and mentor sharing
 

@@ -35,6 +35,9 @@ npm run android
 
 Native development boot notes live in [`docs/dev/native-boot.md`](./docs/dev/native-boot.md).
 
+Database setup and the schema ERD live in [`docs/backend`](./docs/backend/supabase-setup.md), including
+[`docs/backend/erd.md`](./docs/backend/erd.md).
+
 ## Quality Checks
 
 Run TypeScript:
