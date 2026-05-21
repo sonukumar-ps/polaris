@@ -19,12 +19,13 @@ import {
 import { useAppTheme } from './theme';
 import type { AppTheme } from './theme';
 
-type AppRoute = 'dashboard' | 'add-trade' | 'trades';
+type AppRoute = 'dashboard' | 'add-trade' | 'trades' | 'risk';
 
 const navigationItems: { href: Href; key: AppRoute; label: string }[] = [
   { href: '/home' as Href, key: 'dashboard', label: 'Dashboard' },
   { href: '/trades/new' as Href, key: 'add-trade', label: 'Add Trade' },
-  { href: '/trades' as Href, key: 'trades', label: 'Trades' }
+  { href: '/trades' as Href, key: 'trades', label: 'Trades' },
+  { href: '/risk' as Href, key: 'risk', label: 'Risk' }
 ];
 
 export function AppShell({

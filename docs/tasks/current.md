@@ -235,3 +235,19 @@ This is the near-term sequential queue. Work from top to bottom.
   - Added protected `/trades/new` route.
   - Added local validation and P&L preview.
   - Verified with `npm run typecheck` and `npm run lint`.
+
+### V2-003: Risk management calculators
+
+- Type: Feature
+- Status: Done
+- Priority: P2
+- Depends On: TRADE-003
+- Acceptance Criteria:
+  - User can calculate position size from account risk, stop distance, and asset price.
+  - Risk settings can be reused while logging trades.
+- Implementation Notes:
+  - Added pure `calculatePositionSize` helper.
+  - Added protected `/risk` screen with account, risk, entry, stop, and optional target inputs.
+  - Sidebar navigation now exposes the Risk screen.
+  - Calculator shows units, max loss, risk per unit, notional value, and optional R multiple.
+  - Verified with `npm run typecheck` and `npm run lint`.

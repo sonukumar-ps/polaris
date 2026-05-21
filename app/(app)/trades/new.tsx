@@ -1,4 +1,4 @@
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import type { Href } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
@@ -34,23 +34,6 @@ type TradeDraft = {
 };
 
 type ValidationErrors = Partial<Record<keyof TradeDraft, string>>;
-
-const initialDraft: TradeDraft = {
-  closedAt: '',
-  customTags: '',
-  direction: 'long',
-  emotionTag: '',
-  entryPrice: '',
-  exitPrice: '',
-  fees: '0',
-  mistakeTag: '',
-  notes: '',
-  openedAt: new Date().toISOString().slice(0, 10),
-  setupTag: '',
-  size: '',
-  strategyTag: '',
-  symbol: ''
-};
 
 const TRADES_ROUTE = '/trades' as Href;
 
@@ -124,7 +107,8 @@ function calculatePreview(draft: TradeDraft) {
 export default function NewTradeScreen() {
   const router = useRouter();
   const theme = useAppTheme();
-  const [draft, setDraft] = useState<TradeDraft>(initialDraft);
+  const params = useLocalSearchParams<{ entryPrice?: string; size?: string }>();
+  const [draft, setDraft] = useState<TradeDraft>(() => createInitialDraft(params));
   const [errors, setErrors] = useState<ValidationErrors>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -347,6 +331,29 @@ export default function NewTradeScreen() {
       </AppShell>
     </KeyboardAvoidingView>
   );
+}
+
+function createInitialDraft(params: { entryPrice?: string | string[]; size?: string | string[] }): TradeDraft {
+  return {
+    closedAt: '',
+    customTags: '',
+    direction: 'long',
+    emotionTag: '',
+    entryPrice: getParamValue(params.entryPrice),
+    exitPrice: '',
+    fees: '0',
+    mistakeTag: '',
+    notes: '',
+    openedAt: new Date().toISOString().slice(0, 10),
+    setupTag: '',
+    size: getParamValue(params.size),
+    strategyTag: '',
+    symbol: ''
+  };
+}
+
+function getParamValue(value: string | string[] | undefined) {
+  return Array.isArray(value) ? (value[0] ?? '') : (value ?? '');
 }
 
 function toDateTime(date: string) {
