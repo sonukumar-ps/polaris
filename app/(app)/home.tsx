@@ -14,8 +14,8 @@ import {
   useAppTheme
 } from '@/lib/ui';
 import { supabase } from '@/lib/supabase';
-import { buildEquityCurve, calculateDashboardMetrics, listTradeSummaries } from '@/lib/trades';
-import type { EquityCurvePoint, TradeSummary } from '@/lib/trades';
+import { buildEquityCurve, calculateDashboardMetrics, generateInsightCoach, listTradeSummaries } from '@/lib/trades';
+import type { EquityCurvePoint, Insight, InsightMetric, TradeSummary } from '@/lib/trades';
 
 const NEW_TRADE_ROUTE = '/trades/new' as Href;
 const TRADES_ROUTE = '/trades' as Href;
@@ -27,6 +27,7 @@ export default function HomeScreen() {
   const [isLoadingDashboard, setIsLoadingDashboard] = useState(true);
   const dashboardMetrics = useMemo(() => calculateDashboardMetrics(trades), [trades]);
   const equityCurve = useMemo(() => buildEquityCurve(trades), [trades]);
+  const insight = useMemo(() => generateInsightCoach(trades), [trades]);
   const recentTrades = trades.slice(0, 5);
   const metrics = [
     {
@@ -131,6 +132,8 @@ export default function HomeScreen() {
         ))}
       </View>
 
+      <InsightCoachCard insight={insight} isLoading={isLoadingDashboard} />
+
       <View style={styles.dashboardGrid}>
         <Card style={styles.chartCard}>
           <View style={styles.cardHeader}>
@@ -206,6 +209,85 @@ export default function HomeScreen() {
         </Card>
       </View>
     </AppShell>
+  );
+}
+
+function InsightCoachCard({ insight, isLoading }: { insight: Insight; isLoading: boolean }) {
+  const theme = useAppTheme();
+  const relatedTradesRoute = {
+    pathname: '/trades',
+    params: {
+      focus: insight.title,
+      sourceTradeIds: insight.sourceTradeIds.join(',')
+    }
+  } as Href;
+
+  return (
+    <Card style={styles.insightCard}>
+      <View style={styles.cardHeader}>
+        <View>
+          <Text style={[styles.cardTitle, { color: theme.text }]}>This week&apos;s focus</Text>
+          <Text style={[styles.cardMeta, { color: theme.muted }]}>One review cue from your journal</Text>
+        </View>
+        {insight.sourceTradeIds.length > 0 ? (
+          <SecondaryLinkButton href={relatedTradesRoute}>{insight.action.label}</SecondaryLinkButton>
+        ) : null}
+      </View>
+      {isLoading ? (
+        <View style={[styles.insightLoading, { backgroundColor: theme.mutedSurface }]}>
+          <ActivityIndicator color={theme.accent} />
+          <Text style={[styles.stateText, { color: theme.muted }]}>Reading your journal...</Text>
+        </View>
+      ) : (
+        <>
+          <View style={styles.insightBody}>
+            <View
+              style={[
+                styles.insightIndicator,
+                {
+                  backgroundColor:
+                    insight.severity === 'positive'
+                      ? theme.positive
+                      : insight.severity === 'warning'
+                        ? theme.danger
+                        : theme.accent
+                }
+              ]}
+            />
+            <View style={styles.insightCopy}>
+              <Text style={[styles.insightTitle, { color: theme.text }]}>{insight.title}</Text>
+              <Text style={[styles.insightReason, { color: theme.muted }]}>{insight.reason}</Text>
+            </View>
+          </View>
+          <View style={styles.insightMetrics}>
+            {insight.metrics.map((metric) => (
+              <InsightMetricView key={metric.label} metric={metric} />
+            ))}
+          </View>
+        </>
+      )}
+    </Card>
+  );
+}
+
+function InsightMetricView({ metric }: { metric: InsightMetric }) {
+  const theme = useAppTheme();
+
+  return (
+    <View style={[styles.insightMetric, { backgroundColor: theme.mutedSurface }]}>
+      <Text
+        style={[
+          styles.insightMetricValue,
+          {
+            color:
+              metric.tone === 'positive' ? theme.positive : metric.tone === 'warning' ? theme.danger : theme.text
+          }
+        ]}
+      >
+        {metric.value}
+      </Text>
+      <Text style={[styles.insightMetricLabel, { color: theme.muted }]}>{metric.label}</Text>
+    </View>
   );
 }
 
@@ -340,6 +422,61 @@ const styles = StyleSheet.create({
   },
   metricLabel: {
     fontSize: 13,
+    fontWeight: '800'
+  },
+  insightCard: {
+    gap: 18
+  },
+  insightLoading: {
+    minHeight: 126,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    borderRadius: 8,
+    padding: 18
+  },
+  insightBody: {
+    flexDirection: 'row',
+    gap: 14,
+    alignItems: 'flex-start'
+  },
+  insightIndicator: {
+    width: 6,
+    alignSelf: 'stretch',
+    borderRadius: 99
+  },
+  insightCopy: {
+    flex: 1,
+    gap: 8
+  },
+  insightTitle: {
+    fontSize: 24,
+    fontWeight: '800',
+    lineHeight: 30
+  },
+  insightReason: {
+    maxWidth: 760,
+    fontSize: 15,
+    lineHeight: 22
+  },
+  insightMetrics: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10
+  },
+  insightMetric: {
+    minWidth: 150,
+    flex: 1,
+    gap: 5,
+    borderRadius: 8,
+    padding: 12
+  },
+  insightMetricValue: {
+    fontSize: 20,
+    fontWeight: '800'
+  },
+  insightMetricLabel: {
+    fontSize: 12,
     fontWeight: '800'
   },
   dashboardGrid: {

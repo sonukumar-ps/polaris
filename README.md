@@ -38,6 +38,21 @@ Native development boot notes live in [`docs/dev/native-boot.md`](./docs/dev/nat
 Database setup and the schema ERD live in [`docs/backend`](./docs/backend/supabase-setup.md), including
 [`docs/backend/erd.md`](./docs/backend/erd.md).
 
+## Demo Data
+
+Seed a realistic demo trader after `.env` has Supabase values:
+
+```sh
+npm run seed:demo
+```
+
+Then sign in with:
+
+- Email: `demo@polaris.test`
+- Password: `PolarisDemo123!`
+
+The seed is repeatable. It refreshes demo trades, tags, snapshots, and chart screenshots for the demo user.
+
 ## Quality Checks
 
 Run TypeScript:

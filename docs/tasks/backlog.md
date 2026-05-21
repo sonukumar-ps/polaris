@@ -192,6 +192,24 @@ This backlog is ordered by milestone. Pull only the next ready items into `curre
 
 ## V2: Advanced Optimization
 
+### V2-005: Add Insight Coach
+
+- Type: Feature
+- Status: Done
+- Priority: P1
+- Depends On: DASH-002
+- Acceptance Criteria:
+  - Dashboard shows one primary improvement insight.
+  - Insight includes two supporting metrics and one suggested action.
+  - Related trades can be opened from the insight.
+  - Insight generation is deterministic and covered by tests.
+- Implementation Notes:
+  - Added pure `generateInsightCoach` helper with structured insight types.
+  - Dashboard now shows a calm `This week's focus` card.
+  - Related-trade actions open the trades list with a focus filter.
+  - Added lightweight unit coverage for empty, open-only, large-loss, missing-context, weak-tag, and positive-expectancy cases.
+  - Verified with `npm run test`, `npm run typecheck`, and `npm run lint`.
+
 ### V2-001: Broker import architecture
 
 - Type: Feature

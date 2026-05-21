@@ -1,4 +1,4 @@
-import { Link, useFocusEffect } from 'expo-router';
+import { Link, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import type { Href } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -10,6 +10,8 @@ const HOME_ROUTE = '/home' as Href;
 const NEW_TRADE_ROUTE = '/trades/new' as Href;
 
 export default function TradesScreen() {
+  const params = useLocalSearchParams<{ focus?: string; sourceTradeIds?: string }>();
+  const focusLabel = getParamValue(params.focus);
   const [trades, setTrades] = useState<TradeSummary[]>([]);
   const [tags, setTags] = useState<JournalTag[]>([]);
   const [selectedTagId, setSelectedTagId] = useState<string | null>(null);
@@ -25,13 +27,21 @@ export default function TradesScreen() {
         setError(null);
 
         try {
+          const sourceTradeIds = parseSourceTradeIds(params.sourceTradeIds);
           const [loadedTrades, loadedTags] = await Promise.all([
-            listTradeSummaries({ tagId: selectedTagId ?? undefined }),
+            listTradeSummaries({
+              limit: sourceTradeIds.length > 0 ? 500 : undefined,
+              tagId: selectedTagId ?? undefined
+            }),
             listTags()
           ]);
 
           if (isActive) {
-            setTrades(loadedTrades);
+            setTrades(
+              sourceTradeIds.length > 0
+                ? loadedTrades.filter((trade) => sourceTradeIds.includes(trade.id))
+                : loadedTrades
+            );
             setTags(loadedTags);
           }
         } catch (loadError) {
@@ -50,7 +60,7 @@ export default function TradesScreen() {
       return () => {
         isActive = false;
       };
-    }, [selectedTagId])
+    }, [params.sourceTradeIds, selectedTagId])
   );
 
   return (
@@ -61,6 +71,7 @@ export default function TradesScreen() {
         </Link>
         <Text style={styles.eyebrow}>Trade Journal</Text>
         <Text style={styles.title}>Saved trades</Text>
+        {focusLabel ? <Text style={styles.focusText}>Focus: {focusLabel}</Text> : null}
       </View>
 
       <Link href={NEW_TRADE_ROUTE} asChild>
@@ -73,7 +84,9 @@ export default function TradesScreen() {
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           <View style={styles.filters}>
             <Pressable
-              onPress={() => setSelectedTagId(null)}
+              onPress={() => {
+                setSelectedTagId(null);
+              }}
               style={[styles.filterChip, selectedTagId === null && styles.filterChipSelected]}
             >
               <Text
@@ -189,6 +202,16 @@ function pnlStyle(value: number) {
   return value >= 0 ? styles.profit : styles.loss;
 }
 
+function parseSourceTradeIds(value: string | string[] | undefined) {
+  const rawValue = getParamValue(value);
+
+  return rawValue?.split(',').filter(Boolean) ?? [];
+}
+
+function getParamValue(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value;
+}
+
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
@@ -218,6 +241,11 @@ const styles = StyleSheet.create({
     color: '#0F172A',
     fontSize: 34,
     fontWeight: '800'
+  },
+  focusText: {
+    color: '#475569',
+    fontSize: 15,
+    lineHeight: 22
   },
   primaryButton: {
     alignSelf: 'flex-start',
