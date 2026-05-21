@@ -163,7 +163,7 @@ This backlog is ordered by milestone. Pull only the next ready items into `curre
 ### DASH-001: Add basic P&L summary
 
 - Type: Feature
-- Status: Todo
+- Status: Done
 - Priority: P0
 - Depends On: TRADE-003
 - Acceptance Criteria:
@@ -171,6 +171,9 @@ This backlog is ordered by milestone. Pull only the next ready items into `curre
   - Metrics update from saved trades.
 - Implementation Notes:
   - Start with client-side aggregation if the data set is small.
+  - Added pure dashboard metrics helper.
+  - Home dashboard loads saved trades and displays realized P&L, trade count, win rate, average win, and average loss.
+  - Dashboard has loading and error states.
 
 ### DASH-002: Add simple equity curve
 

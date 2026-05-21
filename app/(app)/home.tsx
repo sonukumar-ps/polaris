@@ -1,25 +1,65 @@
 import { Link } from 'expo-router';
 import type { Href } from 'expo-router';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { supabase } from '@/lib/supabase';
-
-const metrics = [
-  { label: 'Realized P&L', value: '$0.00' },
-  { label: 'Win rate', value: '0%' },
-  { label: 'Trades logged', value: '0' }
-];
+import { calculateDashboardMetrics, listTrades } from '@/lib/trades';
+import type { TradeRow } from '@/lib/trades';
 
 const NEW_TRADE_ROUTE = '/trades/new' as Href;
 const TRADES_ROUTE = '/trades' as Href;
 
 export default function HomeScreen() {
+  const [trades, setTrades] = useState<TradeRow[]>([]);
+  const [dashboardError, setDashboardError] = useState<string | null>(null);
+  const [isLoadingDashboard, setIsLoadingDashboard] = useState(true);
+  const dashboardMetrics = useMemo(() => calculateDashboardMetrics(trades), [trades]);
+  const metrics = [
+    { label: 'Realized P&L', value: formatCurrency(dashboardMetrics.realizedPnl) },
+    { label: 'Win rate', value: formatPercent(dashboardMetrics.winRate) },
+    { label: 'Trades logged', value: String(dashboardMetrics.tradeCount) },
+    { label: 'Average win', value: formatCurrency(dashboardMetrics.averageWin) },
+    { label: 'Average loss', value: formatCurrency(dashboardMetrics.averageLoss) }
+  ];
+
+  useEffect(() => {
+    let isActive = true;
+
+    async function loadDashboard() {
+      setDashboardError(null);
+      setIsLoadingDashboard(true);
+
+      try {
+        const loadedTrades = await listTrades({ limit: 500 });
+
+        if (isActive) {
+          setTrades(loadedTrades);
+        }
+      } catch (error) {
+        if (isActive) {
+          setDashboardError(error instanceof Error ? error.message : 'Could not load dashboard metrics.');
+        }
+      } finally {
+        if (isActive) {
+          setIsLoadingDashboard(false);
+        }
+      }
+    }
+
+    void loadDashboard();
+
+    return () => {
+      isActive = false;
+    };
+  }, []);
+
   async function handleSignOut() {
     await supabase.auth.signOut();
   }
 
   return (
-    <View style={styles.screen}>
+    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       <View style={styles.topBar}>
         <View style={styles.header}>
           <Text style={styles.eyebrow}>Polaris Trade Journal</Text>
@@ -38,10 +78,20 @@ export default function HomeScreen() {
         </Pressable>
       </View>
 
+      {dashboardError ? (
+        <View style={styles.errorPanel}>
+          <Text style={styles.errorText}>{dashboardError}</Text>
+        </View>
+      ) : null}
+
       <View style={styles.metricsGrid}>
         {metrics.map((metric) => (
           <View key={metric.label} style={styles.metricCard}>
-            <Text style={styles.metricValue}>{metric.value}</Text>
+            {isLoadingDashboard ? (
+              <ActivityIndicator color="#2563EB" />
+            ) : (
+              <Text style={styles.metricValue}>{metric.value}</Text>
+            )}
             <Text style={styles.metricLabel}>{metric.label}</Text>
           </View>
         ))}
@@ -66,16 +116,35 @@ export default function HomeScreen() {
           </Link>
         </View>
       </View>
-    </View>
+    </ScrollView>
   );
+}
+
+function formatCurrency(value: number) {
+  return new Intl.NumberFormat('en', {
+    currency: 'USD',
+    maximumFractionDigits: 2,
+    minimumFractionDigits: 2,
+    style: 'currency'
+  }).format(value);
+}
+
+function formatPercent(value: number) {
+  return new Intl.NumberFormat('en', {
+    maximumFractionDigits: 0,
+    style: 'percent'
+  }).format(value);
 }
 
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
+    backgroundColor: '#F8FAFC'
+  },
+  content: {
     gap: 24,
     padding: 24,
-    backgroundColor: '#F8FAFC'
+    paddingBottom: 40
   },
   header: {
     gap: 12,
@@ -110,6 +179,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 12
+  },
+  errorPanel: {
+    borderRadius: 8,
+    borderColor: '#FCA5A5',
+    borderWidth: 1,
+    backgroundColor: '#FEF2F2',
+    padding: 14
+  },
+  errorText: {
+    color: '#991B1B',
+    fontSize: 14,
+    fontWeight: '700'
   },
   metricCard: {
     minWidth: 160,
