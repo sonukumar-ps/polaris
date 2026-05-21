@@ -55,6 +55,11 @@ type StrategyDraft = {
 };
 
 type ValidationErrors = Partial<Record<keyof TradeDraft, string>>;
+type DropdownOption = {
+  meta?: string;
+  value: string;
+  label: string;
+};
 
 const TRADES_ROUTE = '/trades' as Href;
 const emptyStrategyDraft: StrategyDraft = {
@@ -157,7 +162,28 @@ export default function NewTradeScreen() {
   const [isCreatingStrategy, setIsCreatingStrategy] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isStrategyModalOpen, setIsStrategyModalOpen] = useState(false);
+  const [openDropdown, setOpenDropdown] = useState<'account' | 'strategy' | null>(null);
   const preview = useMemo(() => calculatePreview(draft), [draft]);
+  const selectedAccount = accounts.find((account) => account.id === draft.accountId) ?? null;
+  const selectedStrategy = strategies.find((strategy) => strategy.id === draft.strategyId) ?? null;
+  const accountOptions = useMemo(
+    () =>
+      accounts.map((account) => ({
+        label: account.name,
+        meta: account.is_main ? 'Main account' : account.broker_name ?? undefined,
+        value: account.id
+      })),
+    [accounts]
+  );
+  const strategyOptions = useMemo(
+    () =>
+      strategies.map((strategy) => ({
+        label: strategy.name,
+        meta: strategy.description ?? undefined,
+        value: strategy.id
+      })),
+    [strategies]
+  );
 
   useEffect(() => {
     let isActive = true;
@@ -337,35 +363,12 @@ export default function NewTradeScreen() {
               {isLoadingAccounts ? (
                 <LoadingPill label="Loading accounts..." />
               ) : (
-                <View style={styles.accountChips}>
-                  {accounts.map((account) => {
-                    const isSelected = draft.accountId === account.id;
-
-                    return (
-                      <Pressable
-                        key={account.id}
-                        onPress={() => updateField('accountId', account.id)}
-                        style={({ pressed }) => [
-                          styles.accountChip,
-                          {
-                            backgroundColor: isSelected ? theme.accent : theme.mutedSurface,
-                            borderColor: isSelected ? theme.accent : theme.border
-                          },
-                          pressed && styles.pressed
-                        ]}
-                      >
-                        <Text style={[styles.accountChipText, { color: isSelected ? '#FFFFFF' : theme.text }]}>
-                          {account.name}
-                        </Text>
-                        {account.is_main ? (
-                          <Text style={[styles.accountChipMeta, { color: isSelected ? '#EAF3FF' : theme.muted }]}>
-                            Main
-                          </Text>
-                        ) : null}
-                      </Pressable>
-                    );
-                  })}
-                </View>
+                <DropdownField
+                  label="Account"
+                  onOpen={() => setOpenDropdown('account')}
+                  placeholder="Select account"
+                  value={selectedAccount?.name ?? ''}
+                />
               )}
               {errors.accountId ? <Text style={[styles.errorText, { color: theme.danger }]}>{errors.accountId}</Text> : null}
             </View>
@@ -465,35 +468,13 @@ export default function NewTradeScreen() {
                   </Text>
                 </View>
               ) : (
-                <View style={styles.strategyList}>
-                  {strategies.map((strategy) => {
-                    const isSelected = draft.strategyId === strategy.id;
-
-                    return (
-                      <Pressable
-                        key={strategy.id}
-                        onPress={() => updateField('strategyId', strategy.id)}
-                        style={({ pressed }) => [
-                          styles.strategyOption,
-                          {
-                            backgroundColor: isSelected ? theme.accent : theme.mutedSurface,
-                            borderColor: isSelected ? theme.accent : theme.border
-                          },
-                          pressed && styles.pressed
-                        ]}
-                      >
-                        <Text style={[styles.strategyName, { color: isSelected ? '#FFFFFF' : theme.text }]}>
-                          {strategy.name}
-                        </Text>
-                        {strategy.description ? (
-                          <Text style={[styles.strategyMeta, { color: isSelected ? '#EAF3FF' : theme.muted }]}>
-                            {strategy.description}
-                          </Text>
-                        ) : null}
-                      </Pressable>
-                    );
-                  })}
-                </View>
+                <DropdownField
+                  label="Strategy"
+                  meta={selectedStrategy?.description ?? undefined}
+                  onOpen={() => setOpenDropdown('strategy')}
+                  placeholder="Select strategy"
+                  value={selectedStrategy?.name ?? ''}
+                />
               )}
               {errors.strategyId ? <Text style={[styles.errorText, { color: theme.danger }]}>{errors.strategyId}</Text> : null}
               {strategyError && !isStrategyModalOpen ? (
@@ -589,8 +570,133 @@ export default function NewTradeScreen() {
           onCreate={handleCreateStrategy}
           onUpdate={updateStrategyDraft}
         />
+        <SelectModal
+          isOpen={openDropdown === 'account'}
+          onClose={() => setOpenDropdown(null)}
+          onSelect={(accountId) => {
+            updateField('accountId', accountId);
+            setOpenDropdown(null);
+          }}
+          options={accountOptions}
+          selectedValue={draft.accountId}
+          title="Select account"
+        />
+        <SelectModal
+          isOpen={openDropdown === 'strategy'}
+          onClose={() => setOpenDropdown(null)}
+          onSelect={(strategyId) => {
+            updateField('strategyId', strategyId);
+            setOpenDropdown(null);
+          }}
+          options={strategyOptions}
+          selectedValue={draft.strategyId}
+          title="Select strategy"
+        />
       </AppShell>
     </KeyboardAvoidingView>
+  );
+}
+
+function DropdownField({
+  label,
+  meta,
+  onOpen,
+  placeholder,
+  value
+}: {
+  label: string;
+  meta?: string;
+  onOpen: () => void;
+  placeholder: string;
+  value: string;
+}) {
+  const theme = useAppTheme();
+
+  return (
+    <View style={styles.dropdownField}>
+      <Text style={[styles.fieldLabel, { color: theme.muted }]}>{label}</Text>
+      <Pressable
+        onPress={onOpen}
+        style={({ pressed }) => [
+          styles.dropdownButton,
+          { backgroundColor: theme.mutedSurface, borderColor: theme.border },
+          pressed && styles.pressed
+        ]}
+      >
+        <View style={styles.dropdownCopy}>
+          <Text style={[styles.dropdownValue, { color: value ? theme.text : theme.muted }]}>
+            {value || placeholder}
+          </Text>
+          {meta ? <Text style={[styles.dropdownMeta, { color: theme.muted }]}>{meta}</Text> : null}
+        </View>
+        <Text style={[styles.dropdownChevron, { color: theme.muted }]}>⌄</Text>
+      </Pressable>
+    </View>
+  );
+}
+
+function SelectModal({
+  isOpen,
+  onClose,
+  onSelect,
+  options,
+  selectedValue,
+  title
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onSelect: (value: string) => void;
+  options: DropdownOption[];
+  selectedValue: string;
+  title: string;
+}) {
+  const theme = useAppTheme();
+
+  return (
+    <Modal animationType="fade" onRequestClose={onClose} transparent visible={isOpen}>
+      <View style={styles.modalBackdrop}>
+        <Card style={styles.selectModalCard}>
+          <View style={styles.sectionHeaderRow}>
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>{title}</Text>
+            <Pressable onPress={onClose} style={({ pressed }) => [styles.closeButton, pressed && styles.pressed]}>
+              <Text style={[styles.closeButtonText, { color: theme.muted }]}>Close</Text>
+            </Pressable>
+          </View>
+          <ScrollView contentContainerStyle={styles.selectOptions}>
+            {options.map((option) => {
+              const isSelected = option.value === selectedValue;
+
+              return (
+                <Pressable
+                  key={option.value}
+                  onPress={() => onSelect(option.value)}
+                  style={({ pressed }) => [
+                    styles.selectOption,
+                    {
+                      backgroundColor: isSelected ? theme.accent : theme.mutedSurface,
+                      borderColor: isSelected ? theme.accent : theme.border
+                    },
+                    pressed && styles.pressed
+                  ]}
+                >
+                  <View style={styles.dropdownCopy}>
+                    <Text style={[styles.selectOptionText, { color: isSelected ? '#FFFFFF' : theme.text }]}>
+                      {option.label}
+                    </Text>
+                    {option.meta ? (
+                      <Text style={[styles.selectOptionMeta, { color: isSelected ? '#EAF3FF' : theme.muted }]}>
+                        {option.meta}
+                      </Text>
+                    ) : null}
+                  </View>
+                  {isSelected ? <Text style={styles.selectCheck}>✓</Text> : null}
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+        </Card>
+      </View>
+    </Modal>
   );
 }
 
@@ -785,6 +891,40 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 12
   },
+  fieldLabel: {
+    fontSize: 13,
+    fontWeight: '800'
+  },
+  dropdownField: {
+    gap: 7
+  },
+  dropdownButton: {
+    minHeight: 52,
+    flexDirection: 'row',
+    gap: 12,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderRadius: 8,
+    borderWidth: 1,
+    paddingHorizontal: 13,
+    paddingVertical: 10
+  },
+  dropdownCopy: {
+    flex: 1,
+    gap: 3
+  },
+  dropdownValue: {
+    fontSize: 16,
+    fontWeight: '800'
+  },
+  dropdownMeta: {
+    fontSize: 12,
+    lineHeight: 17
+  },
+  dropdownChevron: {
+    fontSize: 20,
+    fontWeight: '800'
+  },
   segmentedControl: {
     flexDirection: 'row',
     gap: 8
@@ -814,29 +954,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '800'
   },
-  accountChips: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8
-  },
-  accountChip: {
-    minHeight: 42,
-    flexDirection: 'row',
-    gap: 8,
-    alignItems: 'center',
-    borderRadius: 8,
-    borderWidth: 1,
-    paddingHorizontal: 12
-  },
-  accountChipText: {
-    fontSize: 14,
-    fontWeight: '800'
-  },
-  accountChipMeta: {
-    fontSize: 11,
-    fontWeight: '800',
-    textTransform: 'uppercase'
-  },
   inlineAction: {
     minHeight: 36,
     justifyContent: 'center',
@@ -847,23 +964,6 @@ const styles = StyleSheet.create({
   inlineActionText: {
     fontSize: 13,
     fontWeight: '800'
-  },
-  strategyList: {
-    gap: 8
-  },
-  strategyOption: {
-    gap: 4,
-    borderRadius: 8,
-    borderWidth: 1,
-    padding: 12
-  },
-  strategyName: {
-    fontSize: 15,
-    fontWeight: '800'
-  },
-  strategyMeta: {
-    fontSize: 13,
-    lineHeight: 19
   },
   emptyPanel: {
     gap: 5,
@@ -890,9 +990,41 @@ const styles = StyleSheet.create({
     maxWidth: 720,
     maxHeight: '92%'
   },
+  selectModalCard: {
+    width: '100%',
+    maxWidth: 560,
+    maxHeight: '82%'
+  },
   modalFields: {
     gap: 14,
     paddingBottom: 4
+  },
+  selectOptions: {
+    gap: 8,
+    paddingBottom: 4
+  },
+  selectOption: {
+    minHeight: 52,
+    flexDirection: 'row',
+    gap: 12,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderRadius: 8,
+    borderWidth: 1,
+    padding: 12
+  },
+  selectOptionText: {
+    fontSize: 15,
+    fontWeight: '800'
+  },
+  selectOptionMeta: {
+    fontSize: 12,
+    lineHeight: 17
+  },
+  selectCheck: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '800'
   },
   modalSubtitle: {
     maxWidth: 520,
