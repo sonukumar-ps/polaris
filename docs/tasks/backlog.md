@@ -72,7 +72,7 @@ This backlog is ordered by milestone. Pull only the next ready items into `curre
 ### AUTH-004: Add auth loading and error states
 
 - Type: Frontend
-- Status: Todo
+- Status: Done
 - Priority: P1
 - Depends On: AUTH-002
 - Acceptance Criteria:
@@ -81,6 +81,9 @@ This backlog is ordered by milestone. Pull only the next ready items into `curre
   - Network failures do not leave the UI stuck.
 - Implementation Notes:
   - Avoid large component abstractions until patterns repeat.
+  - Auth provider now captures initial session load failures.
+  - Route guards show explicit loading copy and session error banners.
+  - Sign-in/sign-up catches thrown request failures and always clears submitting state.
 
 ## V1: Trade Logging
 
