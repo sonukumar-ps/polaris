@@ -1,29 +1,43 @@
 import { Link } from 'expo-router';
 import type { Href } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle, Line, Path, Text as SvgText } from 'react-native-svg';
 
+import {
+  AppShell,
+  Card,
+  EmptyState,
+  PrimaryLinkButton,
+  SecondaryLinkButton,
+  SectionHeading,
+  useAppTheme
+} from '@/lib/ui';
 import { supabase } from '@/lib/supabase';
-import { buildEquityCurve, calculateDashboardMetrics, listTrades } from '@/lib/trades';
-import type { EquityCurvePoint, TradeRow } from '@/lib/trades';
+import { buildEquityCurve, calculateDashboardMetrics, listTradeSummaries } from '@/lib/trades';
+import type { EquityCurvePoint, TradeSummary } from '@/lib/trades';
 
 const NEW_TRADE_ROUTE = '/trades/new' as Href;
 const TRADES_ROUTE = '/trades' as Href;
 
 export default function HomeScreen() {
-  const [trades, setTrades] = useState<TradeRow[]>([]);
+  const theme = useAppTheme();
+  const [trades, setTrades] = useState<TradeSummary[]>([]);
   const [dashboardError, setDashboardError] = useState<string | null>(null);
   const [isLoadingDashboard, setIsLoadingDashboard] = useState(true);
   const dashboardMetrics = useMemo(() => calculateDashboardMetrics(trades), [trades]);
   const equityCurve = useMemo(() => buildEquityCurve(trades), [trades]);
+  const recentTrades = trades.slice(0, 5);
   const metrics = [
-    { label: 'Realized P&L', value: formatCurrency(dashboardMetrics.realizedPnl) },
-    { label: 'Win rate', value: formatPercent(dashboardMetrics.winRate) },
-    { label: 'Trades logged', value: String(dashboardMetrics.tradeCount) },
-    { label: 'Average win', value: formatCurrency(dashboardMetrics.averageWin) },
-    { label: 'Average loss', value: formatCurrency(dashboardMetrics.averageLoss) }
-  ];
+    {
+      label: 'Total P&L',
+      tone: dashboardMetrics.realizedPnl >= 0 ? 'positive' : 'negative',
+      value: formatCurrency(dashboardMetrics.realizedPnl)
+    },
+    { label: 'Win rate', tone: 'neutral', value: formatPercent(dashboardMetrics.winRate) },
+    { label: 'Profit factor', tone: 'neutral', value: formatProfitFactor(dashboardMetrics.profitFactor) },
+    { label: 'Trades', tone: 'neutral', value: String(dashboardMetrics.tradeCount) }
+  ] as const;
 
   useEffect(() => {
     let isActive = true;
@@ -33,7 +47,7 @@ export default function HomeScreen() {
       setIsLoadingDashboard(true);
 
       try {
-        const loadedTrades = await listTrades({ limit: 500 });
+        const loadedTrades = await listTradeSummaries({ limit: 500 });
 
         if (isActive) {
           setTrades(loadedTrades);
@@ -61,94 +75,142 @@ export default function HomeScreen() {
   }
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+    <AppShell activeRoute="dashboard">
       <View style={styles.topBar}>
-        <View style={styles.header}>
-          <Text style={styles.eyebrow}>Polaris Trade Journal</Text>
-          <Text style={styles.title}>Log trades. Review patterns. Improve decisions.</Text>
-          <Text style={styles.subtitle}>
-            V1 starts with manual trade logging, chart screenshots, strategy tags, emotional
-            context, and clean P&L visibility across web, iOS, and Android.
-          </Text>
+        <SectionHeading
+          eyebrow="Polaris"
+          subtitle="A quiet operating system for reviewing execution quality, risk, and trade outcomes."
+          title="Trade journal"
+        />
+        <View style={styles.actions}>
+          <SecondaryLinkButton href={TRADES_ROUTE}>View trades</SecondaryLinkButton>
+          <PrimaryLinkButton href={NEW_TRADE_ROUTE}>Add trade</PrimaryLinkButton>
+          <Pressable
+            onPress={handleSignOut}
+            style={({ pressed }) => [
+              styles.signOutButton,
+              { borderColor: theme.border, backgroundColor: theme.card },
+              pressed && styles.pressed
+            ]}
+          >
+            <Text style={[styles.signOutText, { color: theme.muted }]}>Sign out</Text>
+          </Pressable>
         </View>
-
-        <Pressable
-          onPress={handleSignOut}
-          style={({ pressed }) => [styles.signOutButton, pressed && styles.signOutButtonPressed]}
-        >
-          <Text style={styles.signOutButtonText}>Sign out</Text>
-        </Pressable>
       </View>
 
       {dashboardError ? (
-        <View style={styles.errorPanel}>
-          <Text style={styles.errorText}>{dashboardError}</Text>
-        </View>
+        <Card style={{ borderColor: theme.danger }}>
+          <Text style={[styles.errorText, { color: theme.danger }]}>{dashboardError}</Text>
+        </Card>
       ) : null}
 
       <View style={styles.metricsGrid}>
         {metrics.map((metric) => (
-          <View key={metric.label} style={styles.metricCard}>
+          <Card key={metric.label} style={styles.metricCard}>
             {isLoadingDashboard ? (
-              <ActivityIndicator color="#2563EB" />
+              <ActivityIndicator color={theme.accent} />
             ) : (
-              <Text style={styles.metricValue}>{metric.value}</Text>
+              <Text
+                style={[
+                  styles.metricValue,
+                  {
+                    color:
+                      metric.tone === 'positive'
+                        ? theme.positive
+                        : metric.tone === 'negative'
+                          ? theme.danger
+                          : theme.text
+                  }
+                ]}
+              >
+                {metric.value}
+              </Text>
             )}
-            <Text style={styles.metricLabel}>{metric.label}</Text>
-          </View>
+            <Text style={[styles.metricLabel, { color: theme.muted }]}>{metric.label}</Text>
+          </Card>
         ))}
       </View>
 
-      <View style={styles.chartPanel}>
-        <View style={styles.chartHeader}>
-          <Text style={styles.chartTitle}>Equity curve</Text>
-          <Text style={styles.chartMeta}>
-            {equityCurve.length > 0
-              ? `${equityCurve.length} closed trade${equityCurve.length === 1 ? '' : 's'}`
-              : 'No closed trades'}
-          </Text>
-        </View>
-        {isLoadingDashboard ? (
-          <View style={styles.chartState}>
-            <ActivityIndicator color="#2563EB" />
-            <Text style={styles.chartStateText}>Loading curve...</Text>
+      <View style={styles.dashboardGrid}>
+        <Card style={styles.chartCard}>
+          <View style={styles.cardHeader}>
+            <View>
+              <Text style={[styles.cardTitle, { color: theme.text }]}>Equity curve</Text>
+              <Text style={[styles.cardMeta, { color: theme.muted }]}>
+                {equityCurve.length > 0
+                  ? `${equityCurve.length} closed trade${equityCurve.length === 1 ? '' : 's'}`
+                  : 'No closed trades'}
+              </Text>
+            </View>
           </View>
-        ) : equityCurve.length === 0 ? (
-          <View style={styles.chartState}>
-            <Text style={styles.chartStateTitle}>No realized P&L yet</Text>
-            <Text style={styles.chartStateText}>
-              Close a trade with an exit price to start the equity curve.
-            </Text>
-          </View>
-        ) : (
-          <EquityCurveChart points={equityCurve} />
-        )}
-      </View>
+          {isLoadingDashboard ? (
+            <View style={[styles.chartState, { backgroundColor: theme.mutedSurface }]}>
+              <ActivityIndicator color={theme.accent} />
+              <Text style={[styles.stateText, { color: theme.muted }]}>Loading curve...</Text>
+            </View>
+          ) : equityCurve.length === 0 ? (
+            <EmptyState
+              body="Close a trade with an exit price to begin tracking cumulative realized P&L."
+              title="No curve yet"
+            />
+          ) : (
+            <EquityCurveChart points={equityCurve} />
+          )}
+        </Card>
 
-      <View style={styles.panel}>
-        <Text style={styles.panelTitle}>Next build target</Text>
-        <Text style={styles.panelText}>
-          Manual trade persistence is online. Log a trade, then review saved entries
-          from the journal list.
-        </Text>
-        <View style={styles.actions}>
-          <Link href={NEW_TRADE_ROUTE} asChild>
-            <Pressable style={({ pressed }) => [styles.primaryButton, pressed && styles.primaryButtonPressed]}>
-              <Text style={styles.primaryButtonText}>Log trade</Text>
-            </Pressable>
-          </Link>
-          <Link href={TRADES_ROUTE} asChild>
-            <Pressable style={({ pressed }) => [styles.secondaryButton, pressed && styles.primaryButtonPressed]}>
-              <Text style={styles.secondaryButtonText}>View trades</Text>
-            </Pressable>
-          </Link>
-        </View>
+        <Card style={styles.recentCard}>
+          <View style={styles.cardHeader}>
+            <View>
+              <Text style={[styles.cardTitle, { color: theme.text }]}>Recent trades</Text>
+              <Text style={[styles.cardMeta, { color: theme.muted }]}>Latest journal entries</Text>
+            </View>
+            <SecondaryLinkButton href={TRADES_ROUTE}>All</SecondaryLinkButton>
+          </View>
+          {isLoadingDashboard ? (
+            <ActivityIndicator color={theme.accent} />
+          ) : recentTrades.length === 0 ? (
+            <EmptyState body="Your newest trades will appear here once saved." title="No trades" />
+          ) : (
+            <View style={styles.tradeList}>
+              {recentTrades.map((trade) => (
+                <Link key={trade.id} href={`/trades/${trade.id}` as Href} asChild>
+                  <Pressable style={({ pressed }) => [styles.tradeRow, pressed && styles.pressed]}>
+                    <View style={styles.tradeSymbol}>
+                      <Text style={[styles.symbolText, { color: theme.text }]}>
+                        {trade.asset?.symbol ?? 'Trade'}
+                      </Text>
+                      <Text style={[styles.tradeMeta, { color: theme.muted }]}>
+                        {trade.direction.toUpperCase()} | {formatDate(trade.opened_at)}
+                      </Text>
+                    </View>
+                    <Text
+                      style={[
+                        styles.tradePnl,
+                        {
+                          color:
+                            trade.net_pnl === null
+                              ? theme.muted
+                              : trade.net_pnl >= 0
+                                ? theme.positive
+                                : theme.danger
+                        }
+                      ]}
+                    >
+                      {trade.net_pnl === null ? 'Open' : formatCurrency(trade.net_pnl)}
+                    </Text>
+                  </Pressable>
+                </Link>
+              ))}
+            </View>
+          )}
+        </Card>
       </View>
-    </ScrollView>
+    </AppShell>
   );
 }
 
 function EquityCurveChart({ points }: { points: EquityCurvePoint[] }) {
+  const theme = useAppTheme();
   const width = 720;
   const height = 220;
   const paddingX = 42;
@@ -176,7 +238,7 @@ function EquityCurveChart({ points }: { points: EquityCurvePoint[] }) {
     <View style={styles.chartFrame}>
       <Svg height="100%" viewBox={`0 0 ${width} ${height}`} width="100%">
         <Line
-          stroke="#CBD5E1"
+          stroke={theme.border}
           strokeDasharray="6 6"
           strokeWidth={2}
           x1={paddingX}
@@ -184,14 +246,14 @@ function EquityCurveChart({ points }: { points: EquityCurvePoint[] }) {
           y1={zeroY}
           y2={zeroY}
         />
-        <SvgText fill="#64748B" fontSize="12" fontWeight="700" x={paddingX} y={18}>
+        <SvgText fill={theme.muted} fontSize="12" fontWeight="700" x={paddingX} y={18}>
           {formatCurrency(maxValue)}
         </SvgText>
-        <SvgText fill="#64748B" fontSize="12" fontWeight="700" x={paddingX} y={height - 8}>
+        <SvgText fill={theme.muted} fontSize="12" fontWeight="700" x={paddingX} y={height - 8}>
           {formatCurrency(minValue)}
         </SvgText>
-        <Path d={path} fill="none" stroke="#2563EB" strokeLinecap="round" strokeLinejoin="round" strokeWidth={4} />
-        {lastPoint ? <Circle cx={lastPoint.x} cy={lastPoint.y} fill="#2563EB" r={5} /> : null}
+        <Path d={path} fill="none" stroke={theme.accent} strokeLinecap="round" strokeLinejoin="round" strokeWidth={4} />
+        {lastPoint ? <Circle cx={lastPoint.x} cy={lastPoint.y} fill={theme.accent} r={5} /> : null}
       </Svg>
     </View>
   );
@@ -206,6 +268,13 @@ function formatCurrency(value: number) {
   }).format(value);
 }
 
+function formatDate(value: string) {
+  return new Intl.DateTimeFormat('en', {
+    day: '2-digit',
+    month: 'short'
+  }).format(new Date(value));
+}
+
 function formatPercent(value: number) {
   return new Intl.NumberFormat('en', {
     maximumFractionDigits: 0,
@@ -213,75 +282,94 @@ function formatPercent(value: number) {
   }).format(value);
 }
 
+function formatProfitFactor(value: number | null) {
+  if (value === null) {
+    return '0.00';
+  }
+
+  if (!Number.isFinite(value)) {
+    return '∞';
+  }
+
+  return value.toFixed(2);
+}
+
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: '#F8FAFC'
-  },
-  content: {
-    gap: 24,
-    padding: 24,
-    paddingBottom: 40
-  },
-  header: {
-    gap: 12,
-    maxWidth: 760
-  },
   topBar: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 16,
     alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    paddingTop: 64
+    justifyContent: 'space-between'
   },
-  eyebrow: {
-    color: '#2563EB',
+  actions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10
+  },
+  signOutButton: {
+    minHeight: 44,
+    justifyContent: 'center',
+    borderRadius: 8,
+    borderWidth: 1,
+    paddingHorizontal: 14
+  },
+  signOutText: {
     fontSize: 14,
-    fontWeight: '700',
-    textTransform: 'uppercase'
+    fontWeight: '800'
   },
-  title: {
-    color: '#0F172A',
-    fontSize: 40,
-    fontWeight: '800',
-    lineHeight: 46
+  pressed: {
+    opacity: 0.72
   },
-  subtitle: {
-    color: '#475569',
-    fontSize: 17,
-    lineHeight: 26
+  errorText: {
+    fontSize: 14,
+    fontWeight: '800'
   },
   metricsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 12
   },
-  chartPanel: {
-    maxWidth: 860,
-    gap: 14,
-    borderRadius: 8,
-    borderColor: '#E2E8F0',
-    borderWidth: 1,
-    backgroundColor: '#FFFFFF',
-    padding: 18
+  metricCard: {
+    minWidth: 160,
+    flex: 1
   },
-  chartHeader: {
+  metricValue: {
+    fontSize: 30,
+    fontWeight: '800'
+  },
+  metricLabel: {
+    fontSize: 13,
+    fontWeight: '800'
+  },
+  dashboardGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: 14
+  },
+  chartCard: {
+    minWidth: 300,
+    flex: 2
+  },
+  recentCard: {
+    minWidth: 280,
+    flex: 1
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
     alignItems: 'center',
     justifyContent: 'space-between'
   },
-  chartTitle: {
-    color: '#0F172A',
-    fontSize: 20,
+  cardTitle: {
+    fontSize: 19,
     fontWeight: '800'
   },
-  chartMeta: {
-    color: '#64748B',
+  cardMeta: {
     fontSize: 13,
-    fontWeight: '700'
+    fontWeight: '700',
+    marginTop: 3
   },
   chartFrame: {
     width: '100%',
@@ -294,119 +382,36 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 8,
     borderRadius: 8,
-    backgroundColor: '#F8FAFC',
     padding: 18
   },
-  chartStateTitle: {
-    color: '#0F172A',
+  stateText: {
+    fontSize: 14,
+    fontWeight: '700'
+  },
+  tradeList: {
+    gap: 4
+  },
+  tradeRow: {
+    minHeight: 58,
+    flexDirection: 'row',
+    gap: 12,
+    alignItems: 'center',
+    justifyContent: 'space-between'
+  },
+  tradeSymbol: {
+    flex: 1,
+    gap: 4
+  },
+  symbolText: {
     fontSize: 16,
     fontWeight: '800'
   },
-  chartStateText: {
-    color: '#475569',
-    fontSize: 14,
-    lineHeight: 20,
-    textAlign: 'center'
-  },
-  errorPanel: {
-    borderRadius: 8,
-    borderColor: '#FCA5A5',
-    borderWidth: 1,
-    backgroundColor: '#FEF2F2',
-    padding: 14
-  },
-  errorText: {
-    color: '#991B1B',
-    fontSize: 14,
+  tradeMeta: {
+    fontSize: 12,
     fontWeight: '700'
   },
-  metricCard: {
-    minWidth: 160,
-    flexGrow: 1,
-    borderRadius: 8,
-    borderColor: '#E2E8F0',
-    borderWidth: 1,
-    backgroundColor: '#FFFFFF',
-    padding: 16
-  },
-  metricValue: {
-    color: '#0F172A',
-    fontSize: 28,
-    fontWeight: '800'
-  },
-  metricLabel: {
-    color: '#64748B',
-    fontSize: 14,
-    marginTop: 4
-  },
-  panel: {
-    maxWidth: 760,
-    gap: 14,
-    borderRadius: 8,
-    backgroundColor: '#0F172A',
-    padding: 20
-  },
-  panelTitle: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: '700',
-    marginBottom: 8
-  },
-  panelText: {
-    color: '#CBD5E1',
+  tradePnl: {
     fontSize: 15,
-    lineHeight: 23
-  },
-  actions: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10
-  },
-  signOutButton: {
-    minHeight: 40,
-    justifyContent: 'center',
-    borderRadius: 8,
-    borderColor: '#CBD5E1',
-    borderWidth: 1,
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 14
-  },
-  signOutButtonPressed: {
-    opacity: 0.7
-  },
-  signOutButtonText: {
-    color: '#0F172A',
-    fontSize: 14,
-    fontWeight: '700'
-  },
-  primaryButton: {
-    alignSelf: 'flex-start',
-    minHeight: 42,
-    justifyContent: 'center',
-    borderRadius: 8,
-    backgroundColor: '#2563EB',
-    paddingHorizontal: 16
-  },
-  primaryButtonPressed: {
-    opacity: 0.76
-  },
-  primaryButtonText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '700'
-  },
-  secondaryButton: {
-    alignSelf: 'flex-start',
-    minHeight: 42,
-    justifyContent: 'center',
-    borderRadius: 8,
-    borderColor: '#475569',
-    borderWidth: 1,
-    paddingHorizontal: 16
-  },
-  secondaryButtonText: {
-    color: '#E2E8F0',
-    fontSize: 14,
-    fontWeight: '700'
+    fontWeight: '800'
   }
 });

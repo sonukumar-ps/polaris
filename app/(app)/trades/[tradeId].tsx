@@ -1,24 +1,24 @@
-import { Link, useLocalSearchParams } from 'expo-router';
-import type { Href } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { useEffect, useState } from 'react';
-import {
-  ActivityIndicator,
-  Image,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View
-} from 'react-native';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import {
+  AppShell,
+  Card,
+  EmptyState,
+  LoadingState,
+  PrimaryButton,
+  SecondaryLinkButton,
+  SectionHeading,
+  useAppTheme
+} from '@/lib/ui';
 import { getTrade, listTradeImages, uploadTradeImage } from '@/lib/trades';
 import type { TradeImage, TradeSummary } from '@/lib/trades';
 
-const TRADES_ROUTE = '/trades' as Href;
-
 export default function TradeDetailScreen() {
   const { tradeId } = useLocalSearchParams<{ tradeId: string }>();
+  const theme = useAppTheme();
   const [trade, setTrade] = useState<TradeSummary | null>(null);
   const [images, setImages] = useState<TradeImage[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -109,131 +109,132 @@ export default function TradeDetailScreen() {
   }
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <View style={styles.header}>
-        <Link href={TRADES_ROUTE} style={styles.backLink}>
-          Back to trades
-        </Link>
-        <Text style={styles.eyebrow}>Trade Detail</Text>
-        <Text style={styles.title}>{trade?.asset?.symbol ?? 'Trade'}</Text>
+    <AppShell activeRoute="trades">
+      <View style={styles.headerRow}>
+        <SectionHeading
+          eyebrow="Trade detail"
+          subtitle="Review execution, outcome, tags, notes, and chart context in one place."
+          title={trade?.asset?.symbol ?? 'Trade'}
+        />
+        <SecondaryLinkButton href="/trades">Back to trades</SecondaryLinkButton>
       </View>
 
-      {isLoading ? (
-        <View style={styles.panel}>
-          <ActivityIndicator color="#2563EB" />
-          <Text style={styles.mutedText}>Loading trade...</Text>
-        </View>
-      ) : null}
+      {isLoading ? <LoadingState label="Loading trade..." /> : null}
 
       {error ? (
-        <View style={styles.panel}>
-          <Text style={styles.errorText}>{error}</Text>
-        </View>
+        <Card style={{ borderColor: theme.danger }}>
+          <Text style={[styles.errorText, { color: theme.danger }]}>{error}</Text>
+        </Card>
       ) : null}
 
       {trade ? (
-        <View style={styles.panel}>
-          <View style={styles.row}>
-            <Metric label="Direction" value={trade.direction.toUpperCase()} />
-            <Metric label="Status" value={trade.status.toUpperCase()} />
-          </View>
-          <View style={styles.row}>
-            <Metric label="Entry" value={formatNumber(trade.entry_price)} />
-            <Metric label="Exit" value={trade.exit_price ? formatNumber(trade.exit_price) : 'Open'} />
-          </View>
-          <View style={styles.row}>
-            <Metric label="Size" value={formatNumber(trade.quantity)} />
-            <Metric label="Fees" value={formatNumber(trade.fees)} />
-          </View>
-          <View style={styles.row}>
-            <Metric
-              label="Gross P&L"
-              value={trade.gross_pnl !== null ? formatCurrency(trade.gross_pnl) : 'Open'}
-              valueStyle={trade.gross_pnl !== null ? pnlStyle(trade.gross_pnl) : undefined}
-            />
-            <Metric
-              label="Net P&L"
-              value={trade.net_pnl !== null ? formatCurrency(trade.net_pnl) : 'Open'}
-              valueStyle={trade.net_pnl !== null ? pnlStyle(trade.net_pnl) : undefined}
-            />
-          </View>
-          <View style={styles.row}>
-            <Metric label="Opened" value={formatDate(trade.opened_at)} />
-            <Metric label="Closed" value={trade.closed_at ? formatDate(trade.closed_at) : 'Open'} />
-          </View>
-          {trade.tags.length > 0 ? (
-            <View style={styles.tagsSection}>
-              <Text style={styles.metricLabel}>Tags</Text>
-              <View style={styles.tags}>
-                {trade.tags.map((tag) => (
-                  <Text key={tag.id} style={styles.tagChip}>
-                    {tag.type}: {tag.name}
-                  </Text>
+        <View style={styles.layout}>
+          <Card style={styles.mainCard}>
+            <View style={styles.heroRow}>
+              <View>
+                <Text style={[styles.tradeTitle, { color: theme.text }]}>
+                  {trade.direction.toUpperCase()} {trade.asset?.symbol ?? 'Trade'}
+                </Text>
+                <Text style={[styles.tradeSubtitle, { color: theme.muted }]}>
+                  {trade.status.toUpperCase()} | Opened {formatDate(trade.opened_at)}
+                </Text>
+              </View>
+              <Text
+                style={[
+                  styles.netPnl,
+                  {
+                    color:
+                      trade.net_pnl === null
+                        ? theme.muted
+                        : trade.net_pnl >= 0
+                          ? theme.positive
+                          : theme.danger
+                  }
+                ]}
+              >
+                {trade.net_pnl === null ? 'Open' : formatCurrency(trade.net_pnl)}
+              </Text>
+            </View>
+
+            <View style={styles.metricGrid}>
+              <Metric label="Entry" value={formatNumber(trade.entry_price)} />
+              <Metric label="Exit" value={trade.exit_price ? formatNumber(trade.exit_price) : 'Open'} />
+              <Metric label="Size" value={formatNumber(trade.quantity)} />
+              <Metric label="Fees" value={formatCurrency(trade.fees)} />
+              <Metric label="Gross P&L" value={trade.gross_pnl !== null ? formatCurrency(trade.gross_pnl) : 'Open'} />
+              <Metric label="Closed" value={trade.closed_at ? formatDate(trade.closed_at) : 'Open'} />
+            </View>
+
+            {trade.tags.length > 0 ? (
+              <View style={[styles.dividedSection, { borderColor: theme.border }]}>
+                <Text style={[styles.sectionTitle, { color: theme.text }]}>Tags</Text>
+                <View style={styles.tags}>
+                  {trade.tags.map((tag) => (
+                    <Text
+                      key={tag.id}
+                      style={[
+                        styles.tagChip,
+                        { backgroundColor: theme.mutedSurface, color: theme.muted }
+                      ]}
+                    >
+                      {tag.type}: {tag.name}
+                    </Text>
+                  ))}
+                </View>
+              </View>
+            ) : null}
+
+            {trade.notes ? (
+              <View style={[styles.dividedSection, { borderColor: theme.border }]}>
+                <Text style={[styles.sectionTitle, { color: theme.text }]}>Notes</Text>
+                <Text style={[styles.notesText, { color: theme.muted }]}>{trade.notes}</Text>
+              </View>
+            ) : null}
+          </Card>
+
+          <Card style={styles.sideCard}>
+            <View style={styles.cardHeader}>
+              <View>
+                <Text style={[styles.sectionTitle, { color: theme.text }]}>Chart screenshots</Text>
+                <Text style={[styles.sideMeta, { color: theme.muted }]}>Attach visual context</Text>
+              </View>
+              <PrimaryButton disabled={isUploadingImage} onPress={handleAttachImage}>
+                {isUploadingImage ? 'Uploading...' : 'Attach'}
+              </PrimaryButton>
+            </View>
+            {imageError ? <Text style={[styles.errorText, { color: theme.danger }]}>{imageError}</Text> : null}
+            {images.length === 0 ? (
+              <EmptyState body="Screenshots attached to this trade will appear here." title="No screenshots" />
+            ) : (
+              <View style={styles.imageGrid}>
+                {images.map((image) => (
+                  <Pressable
+                    key={image.id}
+                    style={[styles.imageFrame, { backgroundColor: theme.mutedSurface, borderColor: theme.border }]}
+                  >
+                    {image.signedUrl ? (
+                      <Image source={{ uri: image.signedUrl }} style={styles.chartImage} />
+                    ) : (
+                      <Text style={[styles.sideMeta, { color: theme.muted }]}>Preview unavailable</Text>
+                    )}
+                  </Pressable>
                 ))}
               </View>
-            </View>
-          ) : null}
-          {trade.notes ? (
-            <View style={styles.notes}>
-              <Text style={styles.metricLabel}>Notes</Text>
-              <Text style={styles.notesText}>{trade.notes}</Text>
-            </View>
-          ) : null}
+            )}
+          </Card>
         </View>
       ) : null}
-
-      {trade ? (
-        <View style={styles.panel}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Chart screenshots</Text>
-            <Pressable
-              disabled={isUploadingImage}
-              onPress={handleAttachImage}
-              style={({ pressed }) => [
-                styles.attachButton,
-                (pressed || isUploadingImage) && styles.buttonPressed
-              ]}
-            >
-              <Text style={styles.attachButtonText}>
-                {isUploadingImage ? 'Uploading...' : 'Attach image'}
-              </Text>
-            </Pressable>
-          </View>
-          {imageError ? <Text style={styles.errorText}>{imageError}</Text> : null}
-          {images.length === 0 ? (
-            <Text style={styles.mutedText}>No screenshots attached yet.</Text>
-          ) : (
-            <View style={styles.imageGrid}>
-              {images.map((image) => (
-                <View key={image.id} style={styles.imageFrame}>
-                  {image.signedUrl ? (
-                    <Image source={{ uri: image.signedUrl }} style={styles.chartImage} />
-                  ) : (
-                    <Text style={styles.mutedText}>Preview unavailable</Text>
-                  )}
-                </View>
-              ))}
-            </View>
-          )}
-        </View>
-      ) : null}
-    </ScrollView>
+    </AppShell>
   );
 }
 
-function Metric({
-  label,
-  value,
-  valueStyle
-}: {
-  label: string;
-  value: string;
-  valueStyle?: object;
-}) {
+function Metric({ label, value }: { label: string; value: string }) {
+  const theme = useAppTheme();
+
   return (
-    <View style={styles.metric}>
-      <Text style={styles.metricLabel}>{label}</Text>
-      <Text style={[styles.metricValue, valueStyle]}>{value}</Text>
+    <View style={[styles.metric, { backgroundColor: theme.mutedSurface }]}>
+      <Text style={[styles.metricLabel, { color: theme.muted }]}>{label}</Text>
+      <Text style={[styles.metricValue, { color: theme.text }]}>{value}</Text>
     </View>
   );
 }
@@ -262,89 +263,76 @@ function formatCurrency(value: number) {
   }).format(value);
 }
 
-function pnlStyle(value: number) {
-  return value >= 0 ? styles.profit : styles.loss;
-}
-
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: '#F8FAFC'
-  },
-  content: {
-    gap: 18,
-    padding: 24,
-    paddingTop: 56
-  },
-  header: {
-    gap: 8,
-    maxWidth: 860
-  },
-  backLink: {
-    color: '#2563EB',
-    fontSize: 14,
-    fontWeight: '700'
-  },
-  eyebrow: {
-    color: '#2563EB',
-    fontSize: 14,
-    fontWeight: '700',
-    textTransform: 'uppercase'
-  },
-  title: {
-    color: '#0F172A',
-    fontSize: 34,
-    fontWeight: '800'
-  },
-  panel: {
-    maxWidth: 860,
-    gap: 16,
-    borderRadius: 8,
-    borderColor: '#E2E8F0',
-    borderWidth: 1,
-    backgroundColor: '#FFFFFF',
-    padding: 18
-  },
-  row: {
+  headerRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12
+    gap: 16,
+    alignItems: 'flex-start',
+    justifyContent: 'space-between'
   },
-  metric: {
-    minWidth: 180,
-    flex: 1,
-    gap: 4
+  layout: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 14,
+    alignItems: 'flex-start'
   },
-  metricLabel: {
-    color: '#64748B',
-    fontSize: 13,
-    fontWeight: '700'
+  mainCard: {
+    minWidth: 300,
+    flex: 2
   },
-  metricValue: {
-    color: '#0F172A',
-    fontSize: 20,
+  sideCard: {
+    minWidth: 280,
+    flex: 1
+  },
+  heroRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    alignItems: 'flex-start',
+    justifyContent: 'space-between'
+  },
+  tradeTitle: {
+    fontSize: 28,
     fontWeight: '800'
   },
-  mutedText: {
-    color: '#475569',
-    fontSize: 15
+  tradeSubtitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    marginTop: 4
   },
-  errorText: {
-    color: '#B91C1C',
-    fontSize: 14,
-    fontWeight: '700'
+  netPnl: {
+    fontSize: 28,
+    fontWeight: '800'
   },
-  notes: {
-    gap: 6,
-    borderTopColor: '#E2E8F0',
+  metricGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10
+  },
+  metric: {
+    minWidth: 150,
+    flex: 1,
+    gap: 4,
+    borderRadius: 8,
+    padding: 12
+  },
+  metricLabel: {
+    fontSize: 12,
+    fontWeight: '800'
+  },
+  metricValue: {
+    fontSize: 17,
+    fontWeight: '800'
+  },
+  dividedSection: {
+    gap: 10,
     borderTopWidth: 1,
     paddingTop: 16
   },
-  tagsSection: {
-    gap: 8,
-    borderTopColor: '#E2E8F0',
-    borderTopWidth: 1,
-    paddingTop: 16
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '800'
   },
   tags: {
     flexDirection: 'row',
@@ -353,69 +341,46 @@ const styles = StyleSheet.create({
   },
   tagChip: {
     overflow: 'hidden',
-    borderRadius: 6,
-    backgroundColor: '#F1F5F9',
-    color: '#334155',
+    borderRadius: 8,
     fontSize: 12,
-    fontWeight: '700',
-    paddingHorizontal: 8,
-    paddingVertical: 4
+    fontWeight: '800',
+    paddingHorizontal: 9,
+    paddingVertical: 6
   },
   notesText: {
-    color: '#334155',
     fontSize: 15,
     lineHeight: 23
   },
-  sectionHeader: {
+  cardHeader: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 12,
     alignItems: 'center',
     justifyContent: 'space-between'
   },
-  sectionTitle: {
-    color: '#0F172A',
-    fontSize: 20,
-    fontWeight: '800'
-  },
-  attachButton: {
-    minHeight: 40,
-    justifyContent: 'center',
-    borderRadius: 8,
-    backgroundColor: '#2563EB',
-    paddingHorizontal: 14
-  },
-  attachButtonText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '700'
-  },
-  buttonPressed: {
-    opacity: 0.76
+  sideMeta: {
+    fontSize: 13,
+    fontWeight: '700',
+    marginTop: 3
   },
   imageGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12
+    gap: 10
   },
   imageFrame: {
-    width: 220,
+    width: '100%',
     overflow: 'hidden',
     aspectRatio: 16 / 10,
+    alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 8,
-    borderColor: '#E2E8F0',
-    borderWidth: 1,
-    backgroundColor: '#F8FAFC'
+    borderWidth: 1
   },
   chartImage: {
     width: '100%',
     height: '100%'
   },
-  profit: {
-    color: '#166534'
-  },
-  loss: {
-    color: '#B91C1C'
+  errorText: {
+    fontSize: 14,
+    fontWeight: '800'
   }
 });

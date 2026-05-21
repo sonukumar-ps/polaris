@@ -3,6 +3,7 @@ import type { TradeRow } from './service';
 export type DashboardMetrics = {
   averageLoss: number;
   averageWin: number;
+  profitFactor: number | null;
   realizedPnl: number;
   tradeCount: number;
   winRate: number;
@@ -19,6 +20,8 @@ export function calculateDashboardMetrics(trades: TradeRow[]): DashboardMetrics 
   const winningTrades = closedTrades.filter((trade) => Number(trade.net_pnl) > 0);
   const losingTrades = closedTrades.filter((trade) => Number(trade.net_pnl) < 0);
   const realizedPnl = closedTrades.reduce((total, trade) => total + Number(trade.net_pnl), 0);
+  const grossProfit = winningTrades.reduce((total, trade) => total + Number(trade.net_pnl), 0);
+  const grossLoss = Math.abs(losingTrades.reduce((total, trade) => total + Number(trade.net_pnl), 0));
   const averageWin =
     winningTrades.length > 0
       ? winningTrades.reduce((total, trade) => total + Number(trade.net_pnl), 0) / winningTrades.length
@@ -31,6 +34,7 @@ export function calculateDashboardMetrics(trades: TradeRow[]): DashboardMetrics 
   return {
     averageLoss,
     averageWin,
+    profitFactor: grossLoss > 0 ? grossProfit / grossLoss : grossProfit > 0 ? Infinity : null,
     realizedPnl,
     tradeCount: trades.length,
     winRate: closedTrades.length > 0 ? winningTrades.length / closedTrades.length : 0
