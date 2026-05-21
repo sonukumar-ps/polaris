@@ -35,26 +35,33 @@ export default function SignInScreen() {
 
     setIsSubmitting(true);
 
-    const { error: authError } = isSignUp
-      ? await supabase.auth.signUp({
-          email: normalizedEmail,
-          password
-        })
-      : await supabase.auth.signInWithPassword({
-          email: normalizedEmail,
-          password
-        });
+    try {
+      const { error: authError } = isSignUp
+        ? await supabase.auth.signUp({
+            email: normalizedEmail,
+            password
+          })
+        : await supabase.auth.signInWithPassword({
+            email: normalizedEmail,
+            password
+          });
 
-    setIsSubmitting(false);
+      if (authError) {
+        setError(authError.message);
+        return;
+      }
 
-    if (authError) {
-      setError(authError.message);
-      return;
-    }
-
-    if (isSignUp) {
-      setMessage('Account created. Check your email if confirmation is required.');
-      return;
+      if (isSignUp) {
+        setMessage('Account created. Check your email if confirmation is required.');
+      }
+    } catch (submitError) {
+      setError(
+        submitError instanceof Error
+          ? submitError.message
+          : 'The auth request failed. Check your connection and try again.'
+      );
+    } finally {
+      setIsSubmitting(false);
     }
   }
 

@@ -1,46 +1,58 @@
-import { Link } from 'expo-router';
+import { useRouter } from 'expo-router';
 import type { Href } from 'expo-router';
 import { useMemo, useState } from 'react';
+import { KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+
 import {
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View
-} from 'react-native';
+  AppShell,
+  Card,
+  PrimaryButton,
+  SecondaryLinkButton,
+  SectionHeading,
+  TextField,
+  useAppTheme
+} from '@/lib/ui';
+import { calculateRealizedPnl, createManualTrade } from '@/lib/trades';
 
 type Direction = 'long' | 'short';
 
 type TradeDraft = {
-  symbol: string;
+  closedAt: string;
+  customTags: string;
   direction: Direction;
+  emotionTag: string;
   entryPrice: string;
   exitPrice: string;
-  size: string;
   fees: string;
-  openedAt: string;
-  closedAt: string;
+  mistakeTag: string;
   notes: string;
+  openedAt: string;
+  setupTag: string;
+  size: string;
+  strategyTag: string;
+  symbol: string;
 };
 
 type ValidationErrors = Partial<Record<keyof TradeDraft, string>>;
 
 const initialDraft: TradeDraft = {
-  symbol: '',
+  closedAt: '',
+  customTags: '',
   direction: 'long',
+  emotionTag: '',
   entryPrice: '',
   exitPrice: '',
-  size: '',
   fees: '0',
+  mistakeTag: '',
+  notes: '',
   openedAt: new Date().toISOString().slice(0, 10),
-  closedAt: '',
-  notes: ''
+  setupTag: '',
+  size: '',
+  strategyTag: '',
+  symbol: ''
 };
 
-const HOME_ROUTE = '/home' as Href;
+const TRADES_ROUTE = '/trades' as Href;
 
 function parsePositiveNumber(value: string) {
   const parsed = Number(value);
@@ -79,6 +91,14 @@ function validateDraft(draft: TradeDraft) {
     errors.openedAt = 'Opened date is required.';
   }
 
+  if (draft.closedAt && !draft.exitPrice) {
+    errors.exitPrice = 'Exit price is required for closed trades.';
+  }
+
+  if (draft.exitPrice && !draft.closedAt) {
+    errors.closedAt = 'Closed date is required when an exit price is entered.';
+  }
+
   return errors;
 }
 
@@ -92,21 +112,22 @@ function calculatePreview(draft: TradeDraft) {
     return null;
   }
 
-  const directionMultiplier = draft.direction === 'long' ? 1 : -1;
-  const grossPnl = (exitPrice - entryPrice) * size * directionMultiplier;
-  const netPnl = grossPnl - fees;
-
-  return {
-    grossPnl,
-    netPnl
-  };
+  return calculateRealizedPnl({
+    direction: draft.direction,
+    entryPrice,
+    exitPrice,
+    fees,
+    quantity: size
+  });
 }
 
 export default function NewTradeScreen() {
+  const router = useRouter();
+  const theme = useAppTheme();
   const [draft, setDraft] = useState<TradeDraft>(initialDraft);
   const [errors, setErrors] = useState<ValidationErrors>({});
-  const [savedDraft, setSavedDraft] = useState<TradeDraft | null>(null);
-
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
   const preview = useMemo(() => calculatePreview(draft), [draft]);
 
   function updateField<Key extends keyof TradeDraft>(key: Key, value: TradeDraft[Key]) {
@@ -118,275 +139,269 @@ export default function NewTradeScreen() {
       ...current,
       [key]: undefined
     }));
-    setSavedDraft(null);
+    setSubmitError(null);
   }
 
-  function handleReviewDraft() {
+  async function handleSaveTrade() {
     const nextErrors = validateDraft(draft);
     setErrors(nextErrors);
+    setSubmitError(null);
 
     if (Object.keys(nextErrors).length > 0) {
-      setSavedDraft(null);
       return;
     }
 
-    setSavedDraft(draft);
+    setIsSaving(true);
+
+    try {
+      const savedTrade = await createManualTrade({
+        closedAt: draft.closedAt ? toDateTime(draft.closedAt) : null,
+        direction: draft.direction,
+        entryPrice: Number(draft.entryPrice),
+        exitPrice: draft.exitPrice ? Number(draft.exitPrice) : null,
+        fees: Number(draft.fees || '0'),
+        notes: draft.notes,
+        openedAt: toDateTime(draft.openedAt),
+        quantity: Number(draft.size),
+        symbol: draft.symbol,
+        tags: buildTagInputs(draft)
+      });
+
+      router.replace(`/trades/${savedTrade.id}` as Href);
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : 'Could not save trade.');
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   return (
     <KeyboardAvoidingView
       behavior={Platform.select({ ios: 'padding', default: undefined })}
-      style={styles.screen}
+      style={{ flex: 1 }}
     >
-      <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.header}>
-          <Link href={HOME_ROUTE} style={styles.backLink}>
-            Back
-          </Link>
-          <Text style={styles.eyebrow}>Manual Trade</Text>
-          <Text style={styles.title}>Log a trade draft</Text>
-          <Text style={styles.subtitle}>
-            Capture the trade shape locally first. Persistence lands in the next trade task.
-          </Text>
+      <AppShell activeRoute="add-trade">
+        <View style={styles.headerRow}>
+          <SectionHeading
+            eyebrow="New entry"
+            subtitle="Capture execution, context, and emotional state without clutter."
+            title="Add trade"
+          />
+          <SecondaryLinkButton href={TRADES_ROUTE}>Saved trades</SecondaryLinkButton>
         </View>
 
-        <View style={styles.form}>
-          <Field
-            autoCapitalize="characters"
-            error={errors.symbol}
-            label="Asset symbol"
-            onChangeText={(value) => updateField('symbol', value)}
-            placeholder="AAPL"
-            value={draft.symbol}
-          />
+        <View style={styles.layout}>
+          <Card style={styles.formCard}>
+            <View style={styles.formSection}>
+              <Text style={[styles.sectionTitle, { color: theme.text }]}>Trade</Text>
+              <TextField
+                autoCapitalize="characters"
+                error={errors.symbol}
+                label="Symbol"
+                onChangeText={(value) => updateField('symbol', value)}
+                placeholder="AAPL"
+                value={draft.symbol}
+              />
+              <View style={styles.fieldRow}>
+                <TextField
+                  error={errors.entryPrice}
+                  inputMode="decimal"
+                  label="Entry"
+                  onChangeText={(value) => updateField('entryPrice', value)}
+                  placeholder="100.00"
+                  value={draft.entryPrice}
+                />
+                <TextField
+                  error={errors.exitPrice}
+                  inputMode="decimal"
+                  label="Exit"
+                  onChangeText={(value) => updateField('exitPrice', value)}
+                  placeholder="112.50"
+                  value={draft.exitPrice}
+                />
+              </View>
+              <View style={styles.fieldRow}>
+                <TextField
+                  error={errors.size}
+                  inputMode="decimal"
+                  label="Size"
+                  onChangeText={(value) => updateField('size', value)}
+                  placeholder="10"
+                  value={draft.size}
+                />
+                <TextField
+                  error={errors.fees}
+                  inputMode="decimal"
+                  label="Fees"
+                  onChangeText={(value) => updateField('fees', value)}
+                  placeholder="0"
+                  value={draft.fees}
+                />
+              </View>
+              <View style={styles.segmentedControl}>
+                {(['long', 'short'] as const).map((direction) => {
+                  const isSelected = draft.direction === direction;
 
-          <View style={styles.group}>
-            <Text style={styles.label}>Direction</Text>
-            <View style={styles.segmentedControl}>
-              {(['long', 'short'] as const).map((direction) => (
-                <Pressable
-                  key={direction}
-                  onPress={() => updateField('direction', direction)}
-                  style={[
-                    styles.segment,
-                    draft.direction === direction && styles.segmentSelected
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.segmentText,
-                      draft.direction === direction && styles.segmentTextSelected
-                    ]}
-                  >
-                    {direction.toUpperCase()}
-                  </Text>
-                </Pressable>
-              ))}
+                  return (
+                    <Pressable
+                      key={direction}
+                      onPress={() => updateField('direction', direction)}
+                      style={[
+                        styles.segment,
+                        {
+                          backgroundColor: isSelected ? theme.accent : theme.mutedSurface,
+                          borderColor: isSelected ? theme.accent : theme.border
+                        }
+                      ]}
+                    >
+                      <Text style={[styles.segmentText, { color: isSelected ? '#FFFFFF' : theme.muted }]}>
+                        {direction.toUpperCase()}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
             </View>
-          </View>
 
-          <View style={styles.twoColumn}>
-            <Field
-              error={errors.entryPrice}
-              inputMode="decimal"
-              label="Entry price"
-              onChangeText={(value) => updateField('entryPrice', value)}
-              placeholder="100.00"
-              value={draft.entryPrice}
-            />
-            <Field
-              error={errors.exitPrice}
-              inputMode="decimal"
-              label="Exit price"
-              onChangeText={(value) => updateField('exitPrice', value)}
-              placeholder="112.50"
-              value={draft.exitPrice}
-            />
-          </View>
+            <View style={styles.formSection}>
+              <Text style={[styles.sectionTitle, { color: theme.text }]}>Timing and context</Text>
+              <View style={styles.fieldRow}>
+                <TextField
+                  error={errors.openedAt}
+                  label="Opened"
+                  onChangeText={(value) => updateField('openedAt', value)}
+                  placeholder="2026-05-21"
+                  value={draft.openedAt}
+                />
+                <TextField
+                  error={errors.closedAt}
+                  label="Closed"
+                  onChangeText={(value) => updateField('closedAt', value)}
+                  placeholder="Optional"
+                  value={draft.closedAt}
+                />
+              </View>
+              <View style={styles.fieldRow}>
+                <TextField
+                  label="Strategy"
+                  onChangeText={(value) => updateField('strategyTag', value)}
+                  placeholder="Breakout"
+                  value={draft.strategyTag}
+                />
+                <TextField
+                  label="Emotion"
+                  onChangeText={(value) => updateField('emotionTag', value)}
+                  placeholder="Calm"
+                  value={draft.emotionTag}
+                />
+              </View>
+              <View style={styles.fieldRow}>
+                <TextField
+                  label="Mistake"
+                  onChangeText={(value) => updateField('mistakeTag', value)}
+                  placeholder="Chased entry"
+                  value={draft.mistakeTag}
+                />
+                <TextField
+                  label="Setup"
+                  onChangeText={(value) => updateField('setupTag', value)}
+                  placeholder="Opening range"
+                  value={draft.setupTag}
+                />
+              </View>
+              <TextField
+                label="Custom tags"
+                onChangeText={(value) => updateField('customTags', value)}
+                placeholder="Comma-separated tags"
+                value={draft.customTags}
+              />
+              <TextField
+                label="Notes"
+                multiline
+                onChangeText={(value) => updateField('notes', value)}
+                placeholder="What mattered about this trade?"
+                value={draft.notes}
+              />
+            </View>
 
-          <View style={styles.twoColumn}>
-            <Field
-              error={errors.size}
-              inputMode="decimal"
-              label="Size"
-              onChangeText={(value) => updateField('size', value)}
-              placeholder="10"
-              value={draft.size}
-            />
-            <Field
-              error={errors.fees}
-              inputMode="decimal"
-              label="Fees"
-              onChangeText={(value) => updateField('fees', value)}
-              placeholder="0"
-              value={draft.fees}
-            />
-          </View>
+            {submitError ? <Text style={[styles.errorText, { color: theme.danger }]}>{submitError}</Text> : null}
+            <PrimaryButton disabled={isSaving} onPress={handleSaveTrade}>
+              {isSaving ? 'Saving...' : 'Save trade'}
+            </PrimaryButton>
+          </Card>
 
-          <View style={styles.twoColumn}>
-            <Field
-              error={errors.openedAt}
-              label="Opened date"
-              onChangeText={(value) => updateField('openedAt', value)}
-              placeholder="2026-05-20"
-              value={draft.openedAt}
-            />
-            <Field
-              error={errors.closedAt}
-              label="Closed date"
-              onChangeText={(value) => updateField('closedAt', value)}
-              placeholder="Optional"
-              value={draft.closedAt}
-            />
-          </View>
-
-          <Field
-            label="Notes"
-            multiline
-            onChangeText={(value) => updateField('notes', value)}
-            placeholder="Setup, context, emotions, execution notes"
-            value={draft.notes}
-          />
-
-          <Pressable
-            onPress={handleReviewDraft}
-            style={({ pressed }) => [styles.primaryButton, pressed && styles.primaryButtonPressed]}
-          >
-            <Text style={styles.primaryButtonText}>Review draft</Text>
-          </Pressable>
-        </View>
-
-        <View style={styles.preview}>
-          <Text style={styles.previewTitle}>Local preview</Text>
-          <Text style={styles.previewText}>
-            {preview
-              ? `Gross P&L ${preview.grossPnl.toFixed(2)} | Net P&L ${preview.netPnl.toFixed(2)}`
-              : 'Enter entry, exit, size, and fees to preview P&L.'}
-          </Text>
-          {savedDraft ? (
-            <Text style={styles.successText}>
-              Draft ready: {savedDraft.direction.toUpperCase()} {savedDraft.symbol.trim().toUpperCase()}
+          <Card style={styles.previewCard}>
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>Preview</Text>
+            <Text style={[styles.previewValue, { color: preview && preview.netPnl < 0 ? theme.danger : theme.positive }]}>
+              {preview ? formatCurrency(preview.netPnl) : '$0.00'}
             </Text>
-          ) : null}
+            <Text style={[styles.previewLabel, { color: theme.muted }]}>Estimated net P&L</Text>
+            <View style={[styles.previewDivider, { backgroundColor: theme.border }]} />
+            <Text style={[styles.previewText, { color: theme.muted }]}>
+              {preview
+                ? `Gross ${formatCurrency(preview.grossPnl)} after entered fees.`
+                : 'Enter an exit price to preview realized P&L.'}
+            </Text>
+          </Card>
         </View>
-      </ScrollView>
+      </AppShell>
     </KeyboardAvoidingView>
   );
 }
 
-type FieldProps = {
-  autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
-  error?: string;
-  inputMode?: 'decimal' | 'text';
-  label: string;
-  multiline?: boolean;
-  onChangeText: (value: string) => void;
-  placeholder: string;
-  value: string;
-};
+function toDateTime(date: string) {
+  return new Date(`${date}T00:00:00.000Z`).toISOString();
+}
 
-function Field({
-  autoCapitalize = 'none',
-  error,
-  inputMode = 'text',
-  label,
-  multiline = false,
-  onChangeText,
-  placeholder,
-  value
-}: FieldProps) {
-  return (
-    <View style={styles.group}>
-      <Text style={styles.label}>{label}</Text>
-      <TextInput
-        autoCapitalize={autoCapitalize}
-        inputMode={inputMode}
-        multiline={multiline}
-        onChangeText={onChangeText}
-        placeholder={placeholder}
-        style={[styles.input, multiline && styles.textArea, error && styles.inputError]}
-        value={value}
-      />
-      {error ? <Text style={styles.errorText}>{error}</Text> : null}
-    </View>
-  );
+function buildTagInputs(draft: TradeDraft) {
+  return [
+    { name: draft.strategyTag, type: 'strategy' as const },
+    { name: draft.emotionTag, type: 'emotion' as const },
+    { name: draft.mistakeTag, type: 'mistake' as const },
+    { name: draft.setupTag, type: 'setup' as const },
+    ...draft.customTags.split(',').map((name) => ({ name, type: 'custom' as const }))
+  ];
+}
+
+function formatCurrency(value: number) {
+  return new Intl.NumberFormat('en', {
+    currency: 'USD',
+    maximumFractionDigits: 2,
+    minimumFractionDigits: 2,
+    style: 'currency'
+  }).format(value);
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: '#F8FAFC'
+  headerRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 16,
+    alignItems: 'flex-start',
+    justifyContent: 'space-between'
   },
-  content: {
-    gap: 20,
-    padding: 24,
-    paddingTop: 56
+  layout: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 14,
+    alignItems: 'flex-start'
   },
-  header: {
-    gap: 8,
-    maxWidth: 760
+  formCard: {
+    minWidth: 300,
+    flex: 2
   },
-  backLink: {
-    color: '#2563EB',
-    fontSize: 14,
-    fontWeight: '700'
+  previewCard: {
+    minWidth: 260,
+    flex: 1
   },
-  eyebrow: {
-    color: '#2563EB',
-    fontSize: 14,
-    fontWeight: '700',
-    textTransform: 'uppercase'
+  formSection: {
+    gap: 14
   },
-  title: {
-    color: '#0F172A',
-    fontSize: 34,
+  sectionTitle: {
+    fontSize: 18,
     fontWeight: '800'
   },
-  subtitle: {
-    color: '#475569',
-    fontSize: 16,
-    lineHeight: 24
-  },
-  form: {
-    maxWidth: 760,
-    gap: 16,
-    borderRadius: 8,
-    borderColor: '#E2E8F0',
-    borderWidth: 1,
-    backgroundColor: '#FFFFFF',
-    padding: 18
-  },
-  group: {
-    flex: 1,
-    gap: 6
-  },
-  label: {
-    color: '#334155',
-    fontSize: 13,
-    fontWeight: '700'
-  },
-  input: {
-    minHeight: 46,
-    borderRadius: 8,
-    borderColor: '#CBD5E1',
-    borderWidth: 1,
-    color: '#0F172A',
-    fontSize: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 10
-  },
-  inputError: {
-    borderColor: '#B91C1C'
-  },
-  textArea: {
-    minHeight: 96,
-    textAlignVertical: 'top'
-  },
-  errorText: {
-    color: '#B91C1C',
-    fontSize: 13
-  },
-  twoColumn: {
+  fieldRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 12
@@ -401,61 +416,31 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 8,
-    borderColor: '#CBD5E1',
     borderWidth: 1,
-    backgroundColor: '#FFFFFF',
     paddingHorizontal: 12
   },
-  segmentSelected: {
-    borderColor: '#2563EB',
-    backgroundColor: '#EFF6FF'
-  },
   segmentText: {
-    color: '#475569',
     fontSize: 13,
     fontWeight: '800'
   },
-  segmentTextSelected: {
-    color: '#1D4ED8'
-  },
-  primaryButton: {
-    minHeight: 48,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 8,
-    backgroundColor: '#2563EB',
-    paddingHorizontal: 16
-  },
-  primaryButtonPressed: {
-    opacity: 0.76
-  },
-  primaryButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '700'
-  },
-  preview: {
-    maxWidth: 760,
-    gap: 8,
-    borderRadius: 8,
-    borderColor: '#E2E8F0',
-    borderWidth: 1,
-    backgroundColor: '#FFFFFF',
-    padding: 18
-  },
-  previewTitle: {
-    color: '#0F172A',
-    fontSize: 18,
+  errorText: {
+    fontSize: 14,
     fontWeight: '800'
   },
-  previewText: {
-    color: '#475569',
-    fontSize: 15,
-    lineHeight: 22
+  previewValue: {
+    fontSize: 36,
+    fontWeight: '800'
   },
-  successText: {
-    color: '#166534',
+  previewLabel: {
+    fontSize: 13,
+    fontWeight: '800'
+  },
+  previewDivider: {
+    height: 1,
+    marginVertical: 4
+  },
+  previewText: {
     fontSize: 14,
-    fontWeight: '700'
+    lineHeight: 21
   }
 });

@@ -72,7 +72,7 @@ This backlog is ordered by milestone. Pull only the next ready items into `curre
 ### AUTH-004: Add auth loading and error states
 
 - Type: Frontend
-- Status: Todo
+- Status: Done
 - Priority: P1
 - Depends On: AUTH-002
 - Acceptance Criteria:
@@ -81,13 +81,16 @@ This backlog is ordered by milestone. Pull only the next ready items into `curre
   - Network failures do not leave the UI stuck.
 - Implementation Notes:
   - Avoid large component abstractions until patterns repeat.
+  - Auth provider now captures initial session load failures.
+  - Route guards show explicit loading copy and session error banners.
+  - Sign-in/sign-up catches thrown request failures and always clears submitting state.
 
 ## V1: Trade Logging
 
 ### TRADE-002: Persist manual trades
 
 - Type: Feature
-- Status: Todo
+- Status: Done
 - Priority: P0
 - Depends On: DB-006
 - Acceptance Criteria:
@@ -96,11 +99,15 @@ This backlog is ordered by milestone. Pull only the next ready items into `curre
   - User can open a trade detail view.
 - Implementation Notes:
   - Save asset records before or during trade creation as needed.
+  - Manual trade form now saves through the typed trade service.
+  - Added saved trade list at `/trades`.
+  - Added trade detail view at `/trades/[tradeId]`.
+  - Verified with `npm run typecheck` and `npm run lint`.
 
 ### TRADE-003: Calculate realized P&L
 
 - Type: Feature
-- Status: Todo
+- Status: Done
 - Priority: P0
 - Depends On: TRADE-002
 - Acceptance Criteria:
@@ -109,11 +116,16 @@ This backlog is ordered by milestone. Pull only the next ready items into `curre
   - Calculation behavior is covered by tests or documented examples.
 - Implementation Notes:
   - Keep formula logic in a pure helper.
+  - Added pure `calculateRealizedPnl` helper.
+  - Closed manual trades now persist `gross_pnl` and `net_pnl`.
+  - Trade list and detail views surface realized net P&L.
+  - Documented formula examples in `docs/trades/pnl-calculations.md`.
+  - Verified with `npm run typecheck` and `npm run lint`.
 
 ### TRADE-004: Add simple tagging
 
 - Type: Feature
-- Status: Todo
+- Status: Done
 - Priority: P0
 - Depends On: TRADE-002
 - Acceptance Criteria:
@@ -121,11 +133,16 @@ This backlog is ordered by milestone. Pull only the next ready items into `curre
   - Trades can be filtered by tag.
 - Implementation Notes:
   - Use the many-to-many trade/tag model from the database plan.
+  - Manual trade form can save strategy, emotion, mistake, setup, and custom tags.
+  - Tag records are reused by user/type/name and attached through `trade_tags`.
+  - Saved trade list can filter by existing tags.
+  - Trade list and detail views display attached tags.
+  - Verified with `npm run typecheck` and `npm run lint`.
 
 ### TRADE-005: Add chart screenshot uploads
 
 - Type: Feature
-- Status: Todo
+- Status: Done
 - Priority: P0
 - Depends On: TRADE-002
 - Acceptance Criteria:
@@ -134,13 +151,19 @@ This backlog is ordered by milestone. Pull only the next ready items into `curre
   - Storage access respects user ownership.
 - Implementation Notes:
   - Use Supabase Storage and Expo image selection.
+  - Added `expo-image-picker`.
+  - Added private `trade-images` Storage bucket migration with user-folder policies.
+  - Trade detail view can attach screenshots and render signed previews.
+  - Screenshot metadata is stored in `trade_images`.
+  - Applied migration `202605200002_create_trade_images_bucket.sql` to hosted Supabase.
+  - Verified with `npm run typecheck` and `npm run lint`.
 
 ## V1: Dashboard
 
 ### DASH-001: Add basic P&L summary
 
 - Type: Feature
-- Status: Todo
+- Status: Done
 - Priority: P0
 - Depends On: TRADE-003
 - Acceptance Criteria:
@@ -148,11 +171,14 @@ This backlog is ordered by milestone. Pull only the next ready items into `curre
   - Metrics update from saved trades.
 - Implementation Notes:
   - Start with client-side aggregation if the data set is small.
+  - Added pure dashboard metrics helper.
+  - Home dashboard loads saved trades and displays realized P&L, trade count, win rate, average win, and average loss.
+  - Dashboard has loading and error states.
 
 ### DASH-002: Add simple equity curve
 
 - Type: Feature
-- Status: Todo
+- Status: Done
 - Priority: P1
 - Depends On: DASH-001
 - Acceptance Criteria:
@@ -160,6 +186,9 @@ This backlog is ordered by milestone. Pull only the next ready items into `curre
   - Empty state is useful when no trades exist.
 - Implementation Notes:
   - Choose charting library after web and native constraints are verified.
+  - Added `react-native-svg` for a cross-platform chart primitive.
+  - Dashboard derives the curve from cumulative closed-trade net P&L.
+  - Empty and loading states are shown when curve data is unavailable.
 
 ## V2: Advanced Optimization
 
