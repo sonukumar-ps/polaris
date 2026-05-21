@@ -4,7 +4,8 @@ import { resolve } from 'node:path';
 
 const DEMO_EMAIL = process.env.POLARIS_DEMO_EMAIL ?? 'demo@polaris.test';
 const DEMO_PASSWORD = process.env.POLARIS_DEMO_PASSWORD ?? 'PolarisDemo123!';
-const DEMO_ACCOUNT_NAME = 'Demo Trading';
+const DEMO_MAIN_ACCOUNT_NAME = 'Demo Main Account';
+const DEMO_SWING_ACCOUNT_NAME = 'Demo Swing Account';
 const DEMO_NOTE_PREFIX = 'Demo seed:';
 
 loadDotEnv();
@@ -56,6 +57,7 @@ const tradeDrafts = [
     openedAt: '2026-05-06T14:30:00.000Z',
     quantity: 40,
     risk: 90,
+    accountName: DEMO_MAIN_ACCOUNT_NAME,
     symbol: 'AAPL',
     tags: ['Breakout', 'Opening range', 'Calm', 'A setup']
   },
@@ -68,6 +70,7 @@ const tradeDrafts = [
     openedAt: '2026-05-07T15:10:00.000Z',
     quantity: 8,
     risk: 120,
+    accountName: DEMO_MAIN_ACCOUNT_NAME,
     symbol: 'NVDA',
     tags: ['Breakout', 'Trend continuation', 'Calm']
   },
@@ -80,6 +83,7 @@ const tradeDrafts = [
     openedAt: '2026-05-08T14:05:00.000Z',
     quantity: 60,
     risk: 100,
+    accountName: DEMO_MAIN_ACCOUNT_NAME,
     symbol: 'TSLA',
     tags: ['Reversal', 'Calm']
   },
@@ -92,6 +96,7 @@ const tradeDrafts = [
     openedAt: '2026-05-09T14:40:00.000Z',
     quantity: 50,
     risk: 110,
+    accountName: DEMO_MAIN_ACCOUNT_NAME,
     symbol: 'SPY',
     tags: ['Pullback', 'Impatient', 'Chased']
   },
@@ -104,6 +109,7 @@ const tradeDrafts = [
     openedAt: '2026-05-10T12:00:00.000Z',
     quantity: 0.18,
     risk: 140,
+    accountName: DEMO_SWING_ACCOUNT_NAME,
     symbol: 'BTCUSD',
     tags: ['Trend continuation', 'Calm', 'A setup']
   },
@@ -116,6 +122,7 @@ const tradeDrafts = [
     openedAt: '2026-05-11T09:20:00.000Z',
     quantity: 42000,
     risk: 95,
+    accountName: DEMO_SWING_ACCOUNT_NAME,
     symbol: 'EURUSD',
     tags: ['Breakout', 'Calm']
   },
@@ -128,6 +135,7 @@ const tradeDrafts = [
     openedAt: '2026-05-12T14:32:00.000Z',
     quantity: 55,
     risk: 120,
+    accountName: DEMO_MAIN_ACCOUNT_NAME,
     symbol: 'AAPL',
     tags: ['Opening range', 'Impatient', 'Chased']
   },
@@ -140,6 +148,7 @@ const tradeDrafts = [
     openedAt: '2026-05-13T14:45:00.000Z',
     quantity: 7,
     risk: 130,
+    accountName: DEMO_MAIN_ACCOUNT_NAME,
     symbol: 'NVDA',
     tags: ['Breakout', 'Trend continuation', 'Calm', 'A setup']
   },
@@ -152,6 +161,7 @@ const tradeDrafts = [
     openedAt: '2026-05-14T15:00:00.000Z',
     quantity: 80,
     risk: 150,
+    accountName: DEMO_MAIN_ACCOUNT_NAME,
     symbol: 'TSLA',
     tags: ['Reversal', 'Moved stop', 'Impatient']
   },
@@ -164,6 +174,7 @@ const tradeDrafts = [
     openedAt: '2026-05-15T14:30:00.000Z',
     quantity: 70,
     risk: 110,
+    accountName: DEMO_MAIN_ACCOUNT_NAME,
     symbol: 'SPY',
     tags: ['Pullback', 'Calm']
   },
@@ -176,6 +187,7 @@ const tradeDrafts = [
     openedAt: '2026-05-16T13:05:00.000Z',
     quantity: 0.22,
     risk: 125,
+    accountName: DEMO_SWING_ACCOUNT_NAME,
     symbol: 'BTCUSD',
     tags: []
   },
@@ -188,6 +200,7 @@ const tradeDrafts = [
     openedAt: '2026-05-17T14:35:00.000Z',
     quantity: 65,
     risk: 100,
+    accountName: DEMO_MAIN_ACCOUNT_NAME,
     symbol: 'AAPL',
     tags: ['Breakout', 'Opening range', 'Calm']
   },
@@ -200,6 +213,7 @@ const tradeDrafts = [
     openedAt: '2026-05-18T14:40:00.000Z',
     quantity: 6,
     risk: 115,
+    accountName: DEMO_MAIN_ACCOUNT_NAME,
     symbol: 'NVDA',
     tags: ['Reversal', 'Calm']
   },
@@ -212,6 +226,7 @@ const tradeDrafts = [
     openedAt: '2026-05-19T14:40:00.000Z',
     quantity: 90,
     risk: 130,
+    accountName: DEMO_MAIN_ACCOUNT_NAME,
     symbol: 'SPY',
     tags: ['Chased', 'Impatient']
   },
@@ -222,6 +237,7 @@ const tradeDrafts = [
     openedAt: '2026-05-20T14:35:00.000Z',
     quantity: 45,
     risk: 95,
+    accountName: DEMO_MAIN_ACCOUNT_NAME,
     symbol: 'AAPL',
     tags: ['Pullback', 'Calm']
   },
@@ -232,6 +248,7 @@ const tradeDrafts = [
     openedAt: '2026-05-21T15:05:00.000Z',
     quantity: 5,
     risk: 125,
+    accountName: DEMO_MAIN_ACCOUNT_NAME,
     symbol: 'NVDA',
     tags: ['Reversal']
   }
@@ -242,13 +259,13 @@ await main();
 async function main() {
   const user = await signInDemoUser();
   await upsertProfile(user.id);
-  const account = await getOrCreateAccount(user.id);
+  const accountsByName = await getOrCreateDemoAccounts(user.id);
   await clearExistingDemoRows(user.id);
 
   const assetsBySymbol = await seedAssets();
   const tagsByKey = await seedTags(user.id);
-  const createdTrades = await seedTrades({ accountId: account.id, assetsBySymbol, tagsByKey, userId: user.id });
-  await seedSnapshots({ accountId: account.id, trades: createdTrades, userId: user.id });
+  const createdTrades = await seedTrades({ accountsByName, assetsBySymbol, tagsByKey, userId: user.id });
+  await seedSnapshots({ accountsByName, trades: createdTrades, userId: user.id });
   await seedChartImages({ trades: createdTrades, userId: user.id });
 
   console.log('Demo data seeded.');
@@ -308,12 +325,34 @@ async function upsertProfile(userId) {
   }
 }
 
-async function getOrCreateAccount(userId) {
+async function getOrCreateDemoAccounts(userId) {
+  await supabase.from('accounts').update({ is_main: false }).eq('user_id', userId);
+
+  const mainAccount = await upsertDemoAccount({
+    brokerName: 'Polaris Demo Broker',
+    isMain: true,
+    name: DEMO_MAIN_ACCOUNT_NAME,
+    userId
+  });
+  const swingAccount = await upsertDemoAccount({
+    brokerName: 'Polaris Swing Desk',
+    isMain: false,
+    name: DEMO_SWING_ACCOUNT_NAME,
+    userId
+  });
+
+  return new Map([
+    [mainAccount.name, mainAccount],
+    [swingAccount.name, swingAccount]
+  ]);
+}
+
+async function upsertDemoAccount({ brokerName, isMain, name, userId }) {
   const { data: existing, error: findError } = await supabase
     .from('accounts')
     .select('*')
     .eq('user_id', userId)
-    .eq('name', DEMO_ACCOUNT_NAME)
+    .eq('name', name)
     .maybeSingle();
 
   if (findError) {
@@ -321,15 +360,32 @@ async function getOrCreateAccount(userId) {
   }
 
   if (existing) {
-    return existing;
+    const { data, error } = await supabase
+      .from('accounts')
+      .update({
+        broker_name: brokerName,
+        currency: 'USD',
+        is_archived: false,
+        is_main: isMain
+      })
+      .eq('id', existing.id)
+      .select()
+      .single();
+
+    if (error) {
+      throw error;
+    }
+
+    return data;
   }
 
   const { data, error } = await supabase
     .from('accounts')
     .insert({
-      broker_name: 'Polaris Demo Broker',
+      broker_name: brokerName,
       currency: 'USD',
-      name: DEMO_ACCOUNT_NAME,
+      is_main: isMain,
+      name,
       user_id: userId
     })
     .select()
@@ -440,7 +496,7 @@ async function seedTags(userId) {
   return tagsByKey;
 }
 
-async function seedTrades({ accountId, assetsBySymbol, tagsByKey, userId }) {
+async function seedTrades({ accountsByName, assetsBySymbol, tagsByKey, userId }) {
   const createdTrades = [];
 
   for (const draft of tradeDrafts) {
@@ -450,12 +506,18 @@ async function seedTrades({ accountId, assetsBySymbol, tagsByKey, userId }) {
       throw new Error(`Missing asset ${draft.symbol}`);
     }
 
+    const account = accountsByName.get(draft.accountName);
+
+    if (!account) {
+      throw new Error(`Missing account ${draft.accountName}`);
+    }
+
     const pnl = calculatePnl(draft);
     const status = draft.closedAt ? 'closed' : 'open';
     const { data: trade, error } = await supabase
       .from('trades')
       .insert({
-        account_id: accountId,
+        account_id: account.id,
         asset_id: asset.id,
         closed_at: draft.closedAt ?? null,
         direction: draft.direction,
@@ -507,22 +569,24 @@ async function attachTags({ tags, tagsByKey, tradeId }) {
   }
 }
 
-async function seedSnapshots({ accountId, trades, userId }) {
-  let equity = 25000;
-  const snapshots = trades
-    .filter((trade) => trade.closed_at && trade.net_pnl !== null)
-    .map((trade) => {
-      equity += Number(trade.net_pnl);
+async function seedSnapshots({ accountsByName, trades, userId }) {
+  const startingEquityByAccountId = new Map();
+  const snapshots = [];
 
-      return {
-        account_id: accountId,
-        cash_balance: round(equity * 0.72, 2),
-        equity: round(equity, 2),
-        realized_pnl: Number(trade.net_pnl),
-        snapshot_date: trade.closed_at.slice(0, 10),
-        user_id: userId
-      };
+  for (const trade of trades.filter((candidate) => candidate.closed_at && candidate.net_pnl !== null)) {
+    const startingEquity = startingEquityByAccountId.get(trade.account_id) ?? getStartingEquity(trade.account_id, accountsByName);
+    const equity = startingEquity + Number(trade.net_pnl);
+    startingEquityByAccountId.set(trade.account_id, equity);
+
+    snapshots.push({
+      account_id: trade.account_id,
+      cash_balance: round(equity * 0.72, 2),
+      equity: round(equity, 2),
+      realized_pnl: Number(trade.net_pnl),
+      snapshot_date: trade.closed_at.slice(0, 10),
+      user_id: userId
     });
+  }
 
   const { error } = await supabase
     .from('daily_account_snapshots')
@@ -531,6 +595,12 @@ async function seedSnapshots({ accountId, trades, userId }) {
   if (error) {
     throw error;
   }
+}
+
+function getStartingEquity(accountId, accountsByName) {
+  const swingAccount = accountsByName.get(DEMO_SWING_ACCOUNT_NAME);
+
+  return swingAccount?.id === accountId ? 10000 : 25000;
 }
 
 async function seedChartImages({ trades, userId }) {

@@ -14,17 +14,29 @@ import {
   useAppTheme
 } from '@/lib/ui';
 import { supabase } from '@/lib/supabase';
-import { buildEquityCurve, calculateDashboardMetrics, generateInsightCoach, listTradeSummaries } from '@/lib/trades';
-import type { EquityCurvePoint, Insight, InsightMetric, TradeSummary } from '@/lib/trades';
+import {
+  buildEquityCurve,
+  calculateDashboardMetrics,
+  generateInsightCoach,
+  listAccounts,
+  listTradeSummaries
+} from '@/lib/trades';
+import type { EquityCurvePoint, Insight, InsightMetric, TradeSummary, TradingAccount } from '@/lib/trades';
 
 const NEW_TRADE_ROUTE = '/trades/new' as Href;
 const TRADES_ROUTE = '/trades' as Href;
 
 export default function HomeScreen() {
   const theme = useAppTheme();
+  const [accounts, setAccounts] = useState<TradingAccount[]>([]);
+  const [selectedAccountIds, setSelectedAccountIds] = useState<string[]>([]);
   const [trades, setTrades] = useState<TradeSummary[]>([]);
   const [dashboardError, setDashboardError] = useState<string | null>(null);
   const [isLoadingDashboard, setIsLoadingDashboard] = useState(true);
+  const selectedAccounts = useMemo(
+    () => accounts.filter((account) => selectedAccountIds.includes(account.id)),
+    [accounts, selectedAccountIds]
+  );
   const dashboardMetrics = useMemo(() => calculateDashboardMetrics(trades), [trades]);
   const equityCurve = useMemo(() => buildEquityCurve(trades), [trades]);
   const insight = useMemo(() => generateInsightCoach(trades), [trades]);
@@ -43,12 +55,53 @@ export default function HomeScreen() {
   useEffect(() => {
     let isActive = true;
 
-    async function loadDashboard() {
+    async function loadAccounts() {
       setDashboardError(null);
       setIsLoadingDashboard(true);
 
       try {
-        const loadedTrades = await listTradeSummaries({ limit: 500 });
+        const loadedAccounts = await listAccounts();
+        const defaultAccount = loadedAccounts.find((account) => account.is_main) ?? loadedAccounts[0];
+
+        if (isActive) {
+          setAccounts(loadedAccounts);
+          setSelectedAccountIds(defaultAccount ? [defaultAccount.id] : []);
+        }
+      } catch (error) {
+        if (isActive) {
+          setDashboardError(error instanceof Error ? error.message : 'Could not load trading accounts.');
+        }
+      } finally {
+        if (isActive) {
+          setIsLoadingDashboard(false);
+        }
+      }
+    }
+
+    void loadAccounts();
+
+    return () => {
+      isActive = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let isActive = true;
+
+    async function loadDashboard() {
+      if (selectedAccountIds.length === 0) {
+        setTrades([]);
+        return;
+      }
+
+      setDashboardError(null);
+      setIsLoadingDashboard(true);
+
+      try {
+        const loadedTrades = await listTradeSummaries({
+          accountIds: selectedAccountIds,
+          limit: 500
+        });
 
         if (isActive) {
           setTrades(loadedTrades);
@@ -69,10 +122,20 @@ export default function HomeScreen() {
     return () => {
       isActive = false;
     };
-  }, []);
+  }, [selectedAccountIds]);
 
   async function handleSignOut() {
     await supabase.auth.signOut();
+  }
+
+  function toggleAccount(accountId: string) {
+    setSelectedAccountIds((current) => {
+      if (current.includes(accountId)) {
+        return current.length === 1 ? current : current.filter((selectedId) => selectedId !== accountId);
+      }
+
+      return [...current, accountId];
+    });
   }
 
   return (
@@ -104,6 +167,13 @@ export default function HomeScreen() {
           <Text style={[styles.errorText, { color: theme.danger }]}>{dashboardError}</Text>
         </Card>
       ) : null}
+
+      <AccountSelector
+        accounts={accounts}
+        selectedAccountIds={selectedAccountIds}
+        selectedAccounts={selectedAccounts}
+        onToggleAccount={toggleAccount}
+      />
 
       <View style={styles.metricsGrid}>
         {metrics.map((metric) => (
@@ -209,6 +279,62 @@ export default function HomeScreen() {
         </Card>
       </View>
     </AppShell>
+  );
+}
+
+function AccountSelector({
+  accounts,
+  onToggleAccount,
+  selectedAccountIds,
+  selectedAccounts
+}: {
+  accounts: TradingAccount[];
+  onToggleAccount: (accountId: string) => void;
+  selectedAccountIds: string[];
+  selectedAccounts: TradingAccount[];
+}) {
+  const theme = useAppTheme();
+  const selectedLabel =
+    selectedAccounts.length === 0
+      ? 'No account selected'
+      : selectedAccounts.length === 1
+        ? selectedAccounts[0].name
+        : `${selectedAccounts.length} accounts combined`;
+
+  return (
+    <Card style={styles.accountCard}>
+      <View>
+        <Text style={[styles.cardTitle, { color: theme.text }]}>Dashboard account</Text>
+        <Text style={[styles.cardMeta, { color: theme.muted }]}>Showing stats for {selectedLabel}</Text>
+      </View>
+      <View style={styles.accountChips}>
+        {accounts.map((account) => {
+          const isSelected = selectedAccountIds.includes(account.id);
+
+          return (
+            <Pressable
+              key={account.id}
+              onPress={() => onToggleAccount(account.id)}
+              style={({ pressed }) => [
+                styles.accountChip,
+                {
+                  backgroundColor: isSelected ? theme.accent : theme.mutedSurface,
+                  borderColor: isSelected ? theme.accent : theme.border
+                },
+                pressed && styles.pressed
+              ]}
+            >
+              <Text style={[styles.accountChipText, { color: isSelected ? '#FFFFFF' : theme.text }]}>
+                {account.name}
+              </Text>
+              {account.is_main ? (
+                <Text style={[styles.accountChipMeta, { color: isSelected ? '#EAF3FF' : theme.muted }]}>Main</Text>
+              ) : null}
+            </Pressable>
+          );
+        })}
+      </View>
+    </Card>
   );
 }
 
@@ -423,6 +549,32 @@ const styles = StyleSheet.create({
   metricLabel: {
     fontSize: 13,
     fontWeight: '800'
+  },
+  accountCard: {
+    gap: 14
+  },
+  accountChips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8
+  },
+  accountChip: {
+    minHeight: 42,
+    flexDirection: 'row',
+    gap: 8,
+    alignItems: 'center',
+    borderRadius: 8,
+    borderWidth: 1,
+    paddingHorizontal: 12
+  },
+  accountChipText: {
+    fontSize: 14,
+    fontWeight: '800'
+  },
+  accountChipMeta: {
+    fontSize: 11,
+    fontWeight: '800',
+    textTransform: 'uppercase'
   },
   insightCard: {
     gap: 18

@@ -192,6 +192,26 @@ This backlog is ordered by milestone. Pull only the next ready items into `curre
 
 ## V2: Advanced Optimization
 
+### V2-006: Add multiple account dashboard support
+
+- Type: Feature
+- Status: Done
+- Priority: P1
+- Depends On: DASH-002
+- Acceptance Criteria:
+  - Users can have multiple trading accounts.
+  - Only one account can be marked as main.
+  - Dashboard defaults to the main account.
+  - Dashboard can combine multiple selected accounts.
+  - Manual trade entry requires selecting an account.
+- Implementation Notes:
+  - Added `accounts.is_main` with a partial unique index per user.
+  - Dashboard shows account context and multi-select account chips.
+  - Trade list queries can filter by selected account ids.
+  - Manual trade form loads accounts and requires one selection.
+  - Demo seed creates main and swing accounts and spreads trades across both.
+  - Verified with `npm run test`, `npm run typecheck`, and `npm run lint`.
+
 ### V2-005: Add Insight Coach
 
 - Type: Feature

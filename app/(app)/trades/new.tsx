@@ -1,7 +1,7 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import type { Href } from 'expo-router';
-import { useMemo, useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import {
   AppShell,
@@ -12,11 +12,13 @@ import {
   TextField,
   useAppTheme
 } from '@/lib/ui';
-import { calculateRealizedPnl, createManualTrade } from '@/lib/trades';
+import { calculateRealizedPnl, createManualTrade, listAccounts } from '@/lib/trades';
+import type { TradingAccount } from '@/lib/trades';
 
 type Direction = 'long' | 'short';
 
 type TradeDraft = {
+  accountId: string;
   closedAt: string;
   customTags: string;
   direction: Direction;
@@ -49,6 +51,10 @@ function parseNonNegativeNumber(value: string) {
 
 function validateDraft(draft: TradeDraft) {
   const errors: ValidationErrors = {};
+
+  if (!draft.accountId) {
+    errors.accountId = 'Select an account.';
+  }
 
   if (!draft.symbol.trim()) {
     errors.symbol = 'Symbol is required.';
@@ -109,10 +115,48 @@ export default function NewTradeScreen() {
   const theme = useAppTheme();
   const params = useLocalSearchParams<{ entryPrice?: string; size?: string }>();
   const [draft, setDraft] = useState<TradeDraft>(() => createInitialDraft(params));
+  const [accounts, setAccounts] = useState<TradingAccount[]>([]);
   const [errors, setErrors] = useState<ValidationErrors>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [isLoadingAccounts, setIsLoadingAccounts] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const preview = useMemo(() => calculatePreview(draft), [draft]);
+
+  useEffect(() => {
+    let isActive = true;
+
+    async function loadTradingAccounts() {
+      setIsLoadingAccounts(true);
+      setSubmitError(null);
+
+      try {
+        const loadedAccounts = await listAccounts();
+        const defaultAccount = loadedAccounts.find((account) => account.is_main) ?? loadedAccounts[0];
+
+        if (isActive) {
+          setAccounts(loadedAccounts);
+          setDraft((current) => ({
+            ...current,
+            accountId: current.accountId || defaultAccount?.id || ''
+          }));
+        }
+      } catch (error) {
+        if (isActive) {
+          setSubmitError(error instanceof Error ? error.message : 'Could not load trading accounts.');
+        }
+      } finally {
+        if (isActive) {
+          setIsLoadingAccounts(false);
+        }
+      }
+    }
+
+    void loadTradingAccounts();
+
+    return () => {
+      isActive = false;
+    };
+  }, []);
 
   function updateField<Key extends keyof TradeDraft>(key: Key, value: TradeDraft[Key]) {
     setDraft((current) => ({
@@ -139,6 +183,7 @@ export default function NewTradeScreen() {
 
     try {
       const savedTrade = await createManualTrade({
+        accountId: draft.accountId,
         closedAt: draft.closedAt ? toDateTime(draft.closedAt) : null,
         direction: draft.direction,
         entryPrice: Number(draft.entryPrice),
@@ -176,6 +221,47 @@ export default function NewTradeScreen() {
 
         <View style={styles.layout}>
           <Card style={styles.formCard}>
+            <View style={styles.formSection}>
+              <Text style={[styles.sectionTitle, { color: theme.text }]}>Account</Text>
+              {isLoadingAccounts ? (
+                <View style={[styles.accountLoading, { backgroundColor: theme.mutedSurface }]}>
+                  <ActivityIndicator color={theme.accent} />
+                  <Text style={[styles.accountLoadingText, { color: theme.muted }]}>Loading accounts...</Text>
+                </View>
+              ) : (
+                <View style={styles.accountChips}>
+                  {accounts.map((account) => {
+                    const isSelected = draft.accountId === account.id;
+
+                    return (
+                      <Pressable
+                        key={account.id}
+                        onPress={() => updateField('accountId', account.id)}
+                        style={({ pressed }) => [
+                          styles.accountChip,
+                          {
+                            backgroundColor: isSelected ? theme.accent : theme.mutedSurface,
+                            borderColor: isSelected ? theme.accent : theme.border
+                          },
+                          pressed && styles.pressed
+                        ]}
+                      >
+                        <Text style={[styles.accountChipText, { color: isSelected ? '#FFFFFF' : theme.text }]}>
+                          {account.name}
+                        </Text>
+                        {account.is_main ? (
+                          <Text style={[styles.accountChipMeta, { color: isSelected ? '#EAF3FF' : theme.muted }]}>
+                            Main
+                          </Text>
+                        ) : null}
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              )}
+              {errors.accountId ? <Text style={[styles.errorText, { color: theme.danger }]}>{errors.accountId}</Text> : null}
+            </View>
+
             <View style={styles.formSection}>
               <Text style={[styles.sectionTitle, { color: theme.text }]}>Trade</Text>
               <TextField
@@ -335,6 +421,7 @@ export default function NewTradeScreen() {
 
 function createInitialDraft(params: { entryPrice?: string | string[]; size?: string | string[] }): TradeDraft {
   return {
+    accountId: '',
     closedAt: '',
     customTags: '',
     direction: 'long',
@@ -429,6 +516,44 @@ const styles = StyleSheet.create({
   segmentText: {
     fontSize: 13,
     fontWeight: '800'
+  },
+  accountLoading: {
+    minHeight: 54,
+    flexDirection: 'row',
+    gap: 10,
+    alignItems: 'center',
+    borderRadius: 8,
+    paddingHorizontal: 12
+  },
+  accountLoadingText: {
+    fontSize: 13,
+    fontWeight: '800'
+  },
+  accountChips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8
+  },
+  accountChip: {
+    minHeight: 42,
+    flexDirection: 'row',
+    gap: 8,
+    alignItems: 'center',
+    borderRadius: 8,
+    borderWidth: 1,
+    paddingHorizontal: 12
+  },
+  accountChipText: {
+    fontSize: 14,
+    fontWeight: '800'
+  },
+  accountChipMeta: {
+    fontSize: 11,
+    fontWeight: '800',
+    textTransform: 'uppercase'
+  },
+  pressed: {
+    opacity: 0.72
   },
   errorText: {
     fontSize: 14,

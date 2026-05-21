@@ -62,6 +62,7 @@ This file is the high-level product roadmap. Detailed execution lives in `curren
 ## Phase 2: V2 Expansion
 
 - `[x]` Insight Coach for deterministic performance focus
+- `[x]` Multiple trading accounts with dashboard selection
 - `[ ]` Broker import architecture
 - `[ ]` Advanced equity curve analytics
 - `[ ]` Drawdown and rolling performance reports

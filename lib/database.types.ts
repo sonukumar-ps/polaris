@@ -21,6 +21,7 @@ export type Database = {
           currency: string
           id: string
           is_archived: boolean
+          is_main: boolean
           name: string
           updated_at: string
           user_id: string
@@ -31,6 +32,7 @@ export type Database = {
           currency?: string
           id?: string
           is_archived?: boolean
+          is_main?: boolean
           name: string
           updated_at?: string
           user_id: string
@@ -41,6 +43,7 @@ export type Database = {
           currency?: string
           id?: string
           is_archived?: boolean
+          is_main?: boolean
           name?: string
           updated_at?: string
           user_id?: string

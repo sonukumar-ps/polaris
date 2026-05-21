@@ -18,7 +18,7 @@ type TradeImageRow = Tables['trade_images']['Row'];
 type TradeInsert = Tables['trades']['Insert'];
 
 export type CreateManualTradeInput = {
-  accountId?: string;
+  accountId: string;
   assetClass?: AssetClass;
   closedAt?: string | null;
   direction: TradeDirection;
@@ -34,6 +34,7 @@ export type CreateManualTradeInput = {
 };
 
 export type ListTradesOptions = {
+  accountIds?: string[];
   limit?: number;
   tagId?: string;
 };
@@ -44,6 +45,7 @@ export type ManualTradeTagInput = {
 };
 
 export type JournalTag = TagRow;
+export type TradingAccount = AccountRow;
 export type TradeTagSummary = Pick<TagRow, 'id' | 'name' | 'type'>;
 
 export type TradeSummary = TradeRow & {
@@ -77,9 +79,7 @@ export async function createManualTrade(input: CreateManualTradeInput): Promise<
     exchange: input.exchange ?? null,
     symbol: input.symbol
   });
-  const account = input.accountId
-    ? await requireOwnedAccount(input.accountId, userId)
-    : await getOrCreateDefaultAccount(userId);
+  const account = await requireOwnedAccount(input.accountId, userId);
   const realizedPnl =
     input.closedAt && input.exitPrice
       ? calculateRealizedPnl({
@@ -132,6 +132,10 @@ export async function listTrades(options: ListTradesOptions = {}): Promise<Trade
     return [];
   }
 
+  if (options.accountIds && options.accountIds.length === 0) {
+    return [];
+  }
+
   let query = supabase
     .from('trades')
     .select('*')
@@ -143,10 +147,33 @@ export async function listTrades(options: ListTradesOptions = {}): Promise<Trade
     query = query.in('id', taggedTradeIds);
   }
 
+  if (options.accountIds) {
+    query = query.in('account_id', options.accountIds);
+  }
+
   const { data, error } = await query;
 
   if (error) {
     throw toTradeServiceError('Could not load trades.', error);
+  }
+
+  return data;
+}
+
+export async function listAccounts(): Promise<AccountRow[]> {
+  const userId = await requireUserId();
+  await getOrCreateDefaultAccount(userId);
+
+  const { data, error } = await supabase
+    .from('accounts')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('is_archived', false)
+    .order('is_main', { ascending: false })
+    .order('created_at', { ascending: true });
+
+  if (error) {
+    throw toTradeServiceError('Could not load trading accounts.', error);
   }
 
   return data;
@@ -532,6 +559,7 @@ async function getOrCreateDefaultAccount(userId: string): Promise<AccountRow> {
     .select('*')
     .eq('user_id', userId)
     .eq('is_archived', false)
+    .eq('is_main', true)
     .order('created_at', { ascending: true })
     .limit(1)
     .maybeSingle();
@@ -544,9 +572,39 @@ async function getOrCreateDefaultAccount(userId: string): Promise<AccountRow> {
     return existing;
   }
 
+  const { data: fallback, error: fallbackError } = await supabase
+    .from('accounts')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('is_archived', false)
+    .order('created_at', { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (fallbackError) {
+    throw toTradeServiceError('Could not check trading account.', fallbackError);
+  }
+
+  if (fallback) {
+    const { data: promoted, error: promoteError } = await supabase
+      .from('accounts')
+      .update({ is_main: true })
+      .eq('id', fallback.id)
+      .eq('user_id', userId)
+      .select()
+      .single();
+
+    if (promoteError) {
+      throw toTradeServiceError('Could not mark main trading account.', promoteError);
+    }
+
+    return promoted;
+  }
+
   const { data: created, error: insertError } = await supabase
     .from('accounts')
     .insert({
+      is_main: true,
       name: 'Manual Trading',
       user_id: userId
     })
