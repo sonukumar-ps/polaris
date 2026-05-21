@@ -63,6 +63,7 @@ This file is the high-level product roadmap. Detailed execution lives in `curren
 
 - `[x]` Insight Coach for deterministic performance focus
 - `[x]` Multiple trading accounts with dashboard selection
+- `[x]` Account-agnostic strategies for manual trade logging
 - `[ ]` Broker import architecture
 - `[ ]` Advanced equity curve analytics
 - `[ ]` Drawdown and rolling performance reports

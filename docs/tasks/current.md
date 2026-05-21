@@ -289,3 +289,22 @@ This is the near-term sequential queue. Work from top to bottom.
   - Manual trade form loads accounts and requires one selection.
   - Demo seed creates main and swing accounts and spreads trades across both.
   - Verified with `npm run test`, `npm run typecheck`, and `npm run lint`.
+
+### V2-007: Add account-agnostic trading strategies
+
+- Type: Feature
+- Status: Done
+- Priority: P1
+- Depends On: TRADE-002
+- Acceptance Criteria:
+  - Users can create named strategies with required rules, preferred rules, market conditions, and qualitative notes.
+  - Strategies are owned by the user but not tied to any account.
+  - Manual trade entry requires selecting a pre-created strategy.
+  - Users can create a strategy from the manual trade flow without losing the current trade draft.
+- Implementation Notes:
+  - Added `strategies` table and nullable `trades.strategy_id`.
+  - Added typed strategy service helpers.
+  - Manual trade form now loads strategy options and includes a create-strategy modal.
+  - Saved trades also attach the strategy name as a strategy tag for existing tag-based reports.
+  - Demo seed creates four strategies and attaches every seeded trade to one.
+  - Verified with `npm run test`, `npm run typecheck`, and `npm run lint`.

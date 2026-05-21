@@ -12,6 +12,7 @@ export type TradeRow = Tables['trades']['Row'];
 
 type AccountRow = Tables['accounts']['Row'];
 type AssetRow = Tables['assets']['Row'];
+type StrategyRow = Tables['strategies']['Row'];
 type TagRow = Tables['tags']['Row'];
 type TradeImageRow = Tables['trade_images']['Row'];
 
@@ -29,8 +30,18 @@ export type CreateManualTradeInput = {
   notes?: string | null;
   openedAt: string;
   quantity: number;
+  strategyId: string;
   symbol: string;
   tags?: ManualTradeTagInput[];
+};
+
+export type CreateStrategyInput = {
+  description?: string | null;
+  marketConditions?: string | null;
+  mustHaveRules?: string[];
+  name: string;
+  preferredRules?: string[];
+  qualitativeNotes?: string | null;
 };
 
 export type ListTradesOptions = {
@@ -45,11 +56,13 @@ export type ManualTradeTagInput = {
 };
 
 export type JournalTag = TagRow;
+export type TradingStrategy = StrategyRow;
 export type TradingAccount = AccountRow;
 export type TradeTagSummary = Pick<TagRow, 'id' | 'name' | 'type'>;
 
 export type TradeSummary = TradeRow & {
   asset: Pick<AssetRow, 'asset_class' | 'id' | 'symbol'> | null;
+  strategy: Pick<StrategyRow, 'id' | 'name'> | null;
   tags: TradeTagSummary[];
 };
 
@@ -80,6 +93,7 @@ export async function createManualTrade(input: CreateManualTradeInput): Promise<
     symbol: input.symbol
   });
   const account = await requireOwnedAccount(input.accountId, userId);
+  const strategy = await requireOwnedStrategy(input.strategyId, userId);
   const realizedPnl =
     input.closedAt && input.exitPrice
       ? calculateRealizedPnl({
@@ -104,6 +118,7 @@ export async function createManualTrade(input: CreateManualTradeInput): Promise<
     notes: normalizeOptionalText(input.notes),
     opened_at: input.openedAt,
     quantity: input.quantity,
+    strategy_id: strategy.id,
     status: input.closedAt && input.exitPrice ? 'closed' : 'open',
     user_id: userId
   };
@@ -115,7 +130,7 @@ export async function createManualTrade(input: CreateManualTradeInput): Promise<
   }
 
   await attachTagsToTrade({
-    tags: input.tags ?? [],
+    tags: [{ name: strategy.name, type: 'strategy' }, ...(input.tags ?? [])],
     tradeId: data.id,
     userId
   });
@@ -199,10 +214,14 @@ export async function listTradeSummaries(options: ListTradesOptions = {}): Promi
   const assetsById = new Map(assets.map((asset) => [asset.id, asset]));
 
   const tagsByTradeId = await getTagsByTradeId(trades.map((trade) => trade.id));
+  const strategiesById = await getStrategiesById(
+    trades.map((trade) => trade.strategy_id).filter((strategyId): strategyId is string => strategyId !== null)
+  );
 
   return trades.map((trade) => ({
     ...trade,
     asset: assetsById.get(trade.asset_id) ?? null,
+    strategy: trade.strategy_id ? (strategiesById.get(trade.strategy_id) ?? null) : null,
     tags: tagsByTradeId.get(trade.id) ?? []
   }));
 }
@@ -237,8 +256,54 @@ export async function getTrade(tradeId: string): Promise<TradeSummary> {
   return {
     ...trade,
     asset: asset ?? null,
+    strategy: trade.strategy_id ? ((await getStrategiesById([trade.strategy_id])).get(trade.strategy_id) ?? null) : null,
     tags: (await getTagsByTradeId([trade.id])).get(trade.id) ?? []
   };
+}
+
+export async function listStrategies(): Promise<StrategyRow[]> {
+  const userId = await requireUserId();
+  const { data, error } = await supabase
+    .from('strategies')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('is_archived', false)
+    .order('created_at', { ascending: true });
+
+  if (error) {
+    throw toTradeServiceError('Could not load strategies.', error);
+  }
+
+  return data;
+}
+
+export async function createStrategy(input: CreateStrategyInput): Promise<StrategyRow> {
+  const userId = await requireUserId();
+  const name = input.name.trim();
+
+  if (!name) {
+    throw new TradeServiceError('Strategy name is required.');
+  }
+
+  const { data, error } = await supabase
+    .from('strategies')
+    .insert({
+      description: normalizeOptionalText(input.description),
+      market_conditions: normalizeOptionalText(input.marketConditions),
+      must_have_rules: normalizeRuleList(input.mustHaveRules),
+      name,
+      preferred_rules: normalizeRuleList(input.preferredRules),
+      qualitative_notes: normalizeOptionalText(input.qualitativeNotes),
+      user_id: userId
+    })
+    .select()
+    .single();
+
+  if (error) {
+    throw toTradeServiceError('Could not create strategy.', error);
+  }
+
+  return data;
 }
 
 export async function listTags(): Promise<TagRow[]> {
@@ -485,6 +550,22 @@ async function getTagsByTradeId(tradeIds: string[]) {
   return tagsByTradeId;
 }
 
+async function getStrategiesById(strategyIds: string[]) {
+  const uniqueStrategyIds = Array.from(new Set(strategyIds));
+
+  if (uniqueStrategyIds.length === 0) {
+    return new Map<string, Pick<StrategyRow, 'id' | 'name'>>();
+  }
+
+  const { data, error } = await supabase.from('strategies').select('id, name').in('id', uniqueStrategyIds);
+
+  if (error) {
+    throw toTradeServiceError('Could not load strategies.', error);
+  }
+
+  return new Map(data.map((strategy) => [strategy.id, strategy]));
+}
+
 function normalizeTags(tags: ManualTradeTagInput[]) {
   const seen = new Set<string>();
   const normalizedTags: ManualTradeTagInput[] = [];
@@ -637,6 +718,26 @@ async function requireOwnedAccount(accountId: string, userId: string): Promise<A
   return data;
 }
 
+async function requireOwnedStrategy(strategyId: string, userId: string): Promise<StrategyRow> {
+  const { data, error } = await supabase
+    .from('strategies')
+    .select('*')
+    .eq('id', strategyId)
+    .eq('user_id', userId)
+    .eq('is_archived', false)
+    .maybeSingle();
+
+  if (error) {
+    throw toTradeServiceError('Could not check strategy.', error);
+  }
+
+  if (!data) {
+    throw new TradeServiceError('Selected strategy was not found.');
+  }
+
+  return data;
+}
+
 async function requireUserId(): Promise<string> {
   const { data, error } = await supabase.auth.getUser();
 
@@ -654,6 +755,10 @@ async function requireUserId(): Promise<string> {
 function normalizeOptionalText(value: string | null | undefined) {
   const trimmed = value?.trim();
   return trimmed ? trimmed : null;
+}
+
+function normalizeRuleList(rules: string[] | null | undefined) {
+  return Array.from(new Set((rules ?? []).map((rule) => rule.trim()).filter(Boolean)));
 }
 
 function toTradeServiceError(message: string, error: { message: string }) {

@@ -72,6 +72,7 @@ The initial migration creates:
 
 - Profiles
 - Trading accounts
+- Strategies
 - Assets
 - Trades
 - Tags

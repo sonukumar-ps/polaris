@@ -51,7 +51,7 @@ Then sign in with:
 - Email: `demo@polaris.test`
 - Password: `PolarisDemo123!`
 
-The seed is repeatable. It refreshes demo accounts, trades, tags, snapshots, and chart screenshots for the demo user.
+The seed is repeatable. It refreshes demo accounts, strategies, trades, tags, snapshots, and chart screenshots for the demo user.
 
 ## Quality Checks
 

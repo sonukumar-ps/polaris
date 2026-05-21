@@ -148,6 +148,7 @@ export default function TradesScreen() {
                   {trade.direction.toUpperCase()} | {trade.status.toUpperCase()} |{' '}
                   {formatDate(trade.opened_at)}
                 </Text>
+                {trade.strategy ? <Text style={styles.meta}>Strategy: {trade.strategy.name}</Text> : null}
                 {trade.tags.length > 0 ? (
                   <View style={styles.tags}>
                     {trade.tags.map((tag) => (

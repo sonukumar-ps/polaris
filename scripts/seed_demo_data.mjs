@@ -47,6 +47,41 @@ const tagCatalog = [
   { name: 'A setup', type: 'custom' }
 ];
 
+const strategyCatalog = [
+  {
+    description: 'Trade the initial range break after a clean hold or rejection.',
+    market_conditions: 'Best when the index is directional and volume expands after the open.',
+    must_have_rules: ['Define the opening range before entry', 'Enter only after range break confirmation', 'Stop goes outside the range'],
+    name: 'Opening Range Breakout',
+    preferred_rules: ['Relative volume above average', 'First pullback holds the broken level'],
+    qualitative_notes: 'Execution should feel decisive, not late. Avoid chasing the third push.'
+  },
+  {
+    description: 'Join an established move after a controlled pullback.',
+    market_conditions: 'Use when higher timeframe trend and intraday structure agree.',
+    must_have_rules: ['Trend is visible before entry', 'Pullback does not break structure', 'Risk is defined before entry'],
+    name: 'Trend Continuation',
+    preferred_rules: ['Pullback volume fades', 'Entry aligns with market direction'],
+    qualitative_notes: 'Patience matters. The setup should look boring before it starts working.'
+  },
+  {
+    description: 'Fade an extended move only after momentum stalls.',
+    market_conditions: 'Use near prior levels, exhaustion candles, or failed breakouts.',
+    must_have_rules: ['Clear invalidation level', 'Evidence of failed continuation', 'Size reduced when countertrend'],
+    name: 'Reversal at Level',
+    preferred_rules: ['Divergence or failed retest', 'Room back to mean value'],
+    qualitative_notes: 'This is not a knife catch. Wait for the market to prove rejection.'
+  },
+  {
+    description: 'Enter continuation after a shallow pullback into support or resistance.',
+    market_conditions: 'Best in balanced but directional sessions.',
+    must_have_rules: ['Pullback into a mapped level', 'Stop is placed beyond structure', 'Target offers at least 1.5R'],
+    name: 'Structured Pullback',
+    preferred_rules: ['Calm execution state', 'No immediate news risk'],
+    qualitative_notes: 'If the entry needs urgency, it is probably no longer the planned pullback.'
+  }
+];
+
 const tradeDrafts = [
   {
     closedAt: '2026-05-06T16:00:00.000Z',
@@ -58,6 +93,7 @@ const tradeDrafts = [
     quantity: 40,
     risk: 90,
     accountName: DEMO_MAIN_ACCOUNT_NAME,
+    strategyName: 'Opening Range Breakout',
     symbol: 'AAPL',
     tags: ['Breakout', 'Opening range', 'Calm', 'A setup']
   },
@@ -71,6 +107,7 @@ const tradeDrafts = [
     quantity: 8,
     risk: 120,
     accountName: DEMO_MAIN_ACCOUNT_NAME,
+    strategyName: 'Trend Continuation',
     symbol: 'NVDA',
     tags: ['Breakout', 'Trend continuation', 'Calm']
   },
@@ -84,6 +121,7 @@ const tradeDrafts = [
     quantity: 60,
     risk: 100,
     accountName: DEMO_MAIN_ACCOUNT_NAME,
+    strategyName: 'Reversal at Level',
     symbol: 'TSLA',
     tags: ['Reversal', 'Calm']
   },
@@ -97,6 +135,7 @@ const tradeDrafts = [
     quantity: 50,
     risk: 110,
     accountName: DEMO_MAIN_ACCOUNT_NAME,
+    strategyName: 'Structured Pullback',
     symbol: 'SPY',
     tags: ['Pullback', 'Impatient', 'Chased']
   },
@@ -110,6 +149,7 @@ const tradeDrafts = [
     quantity: 0.18,
     risk: 140,
     accountName: DEMO_SWING_ACCOUNT_NAME,
+    strategyName: 'Trend Continuation',
     symbol: 'BTCUSD',
     tags: ['Trend continuation', 'Calm', 'A setup']
   },
@@ -123,6 +163,7 @@ const tradeDrafts = [
     quantity: 42000,
     risk: 95,
     accountName: DEMO_SWING_ACCOUNT_NAME,
+    strategyName: 'Opening Range Breakout',
     symbol: 'EURUSD',
     tags: ['Breakout', 'Calm']
   },
@@ -136,6 +177,7 @@ const tradeDrafts = [
     quantity: 55,
     risk: 120,
     accountName: DEMO_MAIN_ACCOUNT_NAME,
+    strategyName: 'Opening Range Breakout',
     symbol: 'AAPL',
     tags: ['Opening range', 'Impatient', 'Chased']
   },
@@ -149,6 +191,7 @@ const tradeDrafts = [
     quantity: 7,
     risk: 130,
     accountName: DEMO_MAIN_ACCOUNT_NAME,
+    strategyName: 'Trend Continuation',
     symbol: 'NVDA',
     tags: ['Breakout', 'Trend continuation', 'Calm', 'A setup']
   },
@@ -162,6 +205,7 @@ const tradeDrafts = [
     quantity: 80,
     risk: 150,
     accountName: DEMO_MAIN_ACCOUNT_NAME,
+    strategyName: 'Reversal at Level',
     symbol: 'TSLA',
     tags: ['Reversal', 'Moved stop', 'Impatient']
   },
@@ -175,6 +219,7 @@ const tradeDrafts = [
     quantity: 70,
     risk: 110,
     accountName: DEMO_MAIN_ACCOUNT_NAME,
+    strategyName: 'Structured Pullback',
     symbol: 'SPY',
     tags: ['Pullback', 'Calm']
   },
@@ -188,6 +233,7 @@ const tradeDrafts = [
     quantity: 0.22,
     risk: 125,
     accountName: DEMO_SWING_ACCOUNT_NAME,
+    strategyName: 'Trend Continuation',
     symbol: 'BTCUSD',
     tags: []
   },
@@ -201,6 +247,7 @@ const tradeDrafts = [
     quantity: 65,
     risk: 100,
     accountName: DEMO_MAIN_ACCOUNT_NAME,
+    strategyName: 'Opening Range Breakout',
     symbol: 'AAPL',
     tags: ['Breakout', 'Opening range', 'Calm']
   },
@@ -214,6 +261,7 @@ const tradeDrafts = [
     quantity: 6,
     risk: 115,
     accountName: DEMO_MAIN_ACCOUNT_NAME,
+    strategyName: 'Reversal at Level',
     symbol: 'NVDA',
     tags: ['Reversal', 'Calm']
   },
@@ -227,6 +275,7 @@ const tradeDrafts = [
     quantity: 90,
     risk: 130,
     accountName: DEMO_MAIN_ACCOUNT_NAME,
+    strategyName: 'Opening Range Breakout',
     symbol: 'SPY',
     tags: ['Chased', 'Impatient']
   },
@@ -238,6 +287,7 @@ const tradeDrafts = [
     quantity: 45,
     risk: 95,
     accountName: DEMO_MAIN_ACCOUNT_NAME,
+    strategyName: 'Structured Pullback',
     symbol: 'AAPL',
     tags: ['Pullback', 'Calm']
   },
@@ -249,6 +299,7 @@ const tradeDrafts = [
     quantity: 5,
     risk: 125,
     accountName: DEMO_MAIN_ACCOUNT_NAME,
+    strategyName: 'Reversal at Level',
     symbol: 'NVDA',
     tags: ['Reversal']
   }
@@ -264,7 +315,8 @@ async function main() {
 
   const assetsBySymbol = await seedAssets();
   const tagsByKey = await seedTags(user.id);
-  const createdTrades = await seedTrades({ accountsByName, assetsBySymbol, tagsByKey, userId: user.id });
+  const strategiesByName = await seedStrategies(user.id);
+  const createdTrades = await seedTrades({ accountsByName, assetsBySymbol, strategiesByName, tagsByKey, userId: user.id });
   await seedSnapshots({ accountsByName, trades: createdTrades, userId: user.id });
   await seedChartImages({ trades: createdTrades, userId: user.id });
 
@@ -496,7 +548,60 @@ async function seedTags(userId) {
   return tagsByKey;
 }
 
-async function seedTrades({ accountsByName, assetsBySymbol, tagsByKey, userId }) {
+async function seedStrategies(userId) {
+  const strategiesByName = new Map();
+
+  for (const strategy of strategyCatalog) {
+    const { data: existing, error: findError } = await supabase
+      .from('strategies')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('name', strategy.name)
+      .maybeSingle();
+
+    if (findError) {
+      throw findError;
+    }
+
+    if (existing) {
+      const { data, error } = await supabase
+        .from('strategies')
+        .update({
+          ...strategy,
+          is_archived: false
+        })
+        .eq('id', existing.id)
+        .select()
+        .single();
+
+      if (error) {
+        throw error;
+      }
+
+      strategiesByName.set(data.name, data);
+      continue;
+    }
+
+    const { data, error } = await supabase
+      .from('strategies')
+      .insert({
+        ...strategy,
+        user_id: userId
+      })
+      .select()
+      .single();
+
+    if (error) {
+      throw error;
+    }
+
+    strategiesByName.set(data.name, data);
+  }
+
+  return strategiesByName;
+}
+
+async function seedTrades({ accountsByName, assetsBySymbol, strategiesByName, tagsByKey, userId }) {
   const createdTrades = [];
 
   for (const draft of tradeDrafts) {
@@ -510,6 +615,12 @@ async function seedTrades({ accountsByName, assetsBySymbol, tagsByKey, userId })
 
     if (!account) {
       throw new Error(`Missing account ${draft.accountName}`);
+    }
+
+    const strategy = strategiesByName.get(draft.strategyName);
+
+    if (!strategy) {
+      throw new Error(`Missing strategy ${draft.strategyName}`);
     }
 
     const pnl = calculatePnl(draft);
@@ -532,6 +643,7 @@ async function seedTrades({ accountsByName, assetsBySymbol, tagsByKey, userId })
         r_multiple: pnl ? round(pnl.netPnl / draft.risk, 4) : null,
         risk_amount: draft.risk,
         status,
+        strategy_id: strategy.id,
         user_id: userId
       })
       .select()

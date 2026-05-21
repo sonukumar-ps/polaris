@@ -16,12 +16,14 @@ Use this SVG when Mermaid is not supported by your Markdown renderer.
 flowchart LR
   user["Auth user"] --> profile["Profile"]
   profile --> accounts["Trading accounts"]
+  profile --> strategies["Strategies"]
   profile --> tags["Journal tags"]
   profile --> trades["Trades"]
   profile --> snapshots["Daily account snapshots"]
   accounts --> trades
   accounts --> snapshots
   assets["Shared asset catalog"] --> trades
+  strategies["Account-agnostic playbooks"] --> trades
   trades --> tradeTags["Trade tag links"]
   tags --> tradeTags
   trades --> images["Trade image metadata"]
@@ -33,7 +35,7 @@ flowchart LR
   classDef storage fill:#fff4e5,stroke:#ff9f0a,color:#2c1f07;
 
   class user,profile owner;
-  class accounts,trades,tags,tradeTags,snapshots journal;
+  class accounts,strategies,trades,tags,tradeTags,snapshots journal;
   class assets ref;
   class images,storage storage;
 ```
@@ -44,12 +46,14 @@ flowchart LR
 erDiagram
   AUTH_USERS ||--|| PROFILES : "creates"
   PROFILES ||--o{ ACCOUNTS : "owns"
+  PROFILES ||--o{ STRATEGIES : "defines"
   PROFILES ||--o{ TRADES : "logs"
   PROFILES ||--o{ TAGS : "defines"
   PROFILES ||--o{ TRADE_IMAGES : "uploads"
   PROFILES ||--o{ DAILY_ACCOUNT_SNAPSHOTS : "records"
   ACCOUNTS ||--o{ TRADES : "contains"
   ACCOUNTS ||--o{ DAILY_ACCOUNT_SNAPSHOTS : "has daily equity"
+  STRATEGIES ||--o{ TRADES : "guides"
   ASSETS ||--o{ TRADES : "is traded in"
   TRADES ||--o{ TRADE_TAGS : "is labeled by"
   TAGS ||--o{ TRADE_TAGS : "labels"
@@ -82,6 +86,20 @@ erDiagram
     timestamptz updated_at
   }
 
+  STRATEGIES {
+    uuid id PK
+    uuid user_id FK
+    text name
+    text description
+    text market_conditions
+    text_array must_have_rules
+    text_array preferred_rules
+    text qualitative_notes
+    boolean is_archived
+    timestamptz created_at
+    timestamptz updated_at
+  }
+
   ASSETS {
     uuid id PK
     text symbol
@@ -97,6 +115,7 @@ erDiagram
     uuid user_id FK
     uuid account_id FK
     uuid asset_id FK
+    uuid strategy_id FK
     trade_direction direction
     trade_status status
     timestamptz opened_at
@@ -167,8 +186,9 @@ erDiagram
 - `auth.users` is the identity source. A database trigger creates one `profiles` row for each new auth user.
 - `profiles` is the ownership root for user-private data. Accounts, trades, tags, images, and snapshots all trace back to it for RLS.
 - `accounts` groups trades and daily equity snapshots for a user.
+- `strategies` are reusable, account-agnostic playbooks with required rules, preferred rules, market conditions, and qualitative notes.
 - `assets` is shared reference data. Authenticated users can read and insert assets, but assets are not owned by one profile.
-- `trades` is the central journal record. It belongs to one profile, one account, and one asset.
+- `trades` is the central journal record. It belongs to one profile, one account, one asset, and optionally one strategy.
 - `tags` are user-owned labels. `trade_tags` is the many-to-many join table between trades and tags.
 - `trade_images` stores metadata for screenshots attached to trades. The actual file lives in Supabase Storage.
 - `daily_account_snapshots` captures account equity over time for dashboard and future analytics.
@@ -179,7 +199,9 @@ erDiagram
 | --- | --- |
 | Profile identity | `profiles.id` references `auth.users.id` and cascades on user deletion. |
 | User data ownership | User-owned rows carry `user_id` back to `profiles.id`. |
+| Main account | `accounts.is_main` is unique per user when true. |
 | Account cleanup | Deleting a profile deletes accounts; deleting an account deletes its trades and snapshots. |
+| Strategy reuse | `strategies` are unique by active `(user_id, lower(name))` and can be reused across accounts. |
 | Trade cleanup | Deleting a trade deletes its tag links and image metadata. |
 | Asset reuse | `assets` are unique by `(symbol, asset_class, exchange)` and survive trade deletion. |
 | Tag reuse | `tags` are unique by `(user_id, type, name)`. |

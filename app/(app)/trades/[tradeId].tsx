@@ -157,6 +157,7 @@ export default function TradeDetailScreen() {
             </View>
 
             <View style={styles.metricGrid}>
+              <Metric label="Strategy" value={trade.strategy?.name ?? 'Not set'} />
               <Metric label="Entry" value={formatNumber(trade.entry_price)} />
               <Metric label="Exit" value={trade.exit_price ? formatNumber(trade.exit_price) : 'Open'} />
               <Metric label="Size" value={formatNumber(trade.quantity)} />

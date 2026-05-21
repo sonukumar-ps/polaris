@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1400" height="1120" viewBox="0 0 1400 1120" role="img" aria-labelledby="title desc">
   <title id="title">Polaris database entity relationship diagram</title>
-  <desc id="desc">Entity relationship diagram for Polaris Supabase tables, showing auth users, profiles, accounts, trades, assets, tags, trade images, daily snapshots, and storage objects.</desc>
+  <desc id="desc">Entity relationship diagram for Polaris Supabase tables, showing auth users, profiles, accounts, strategies, trades, assets, tags, trade images, daily snapshots, and storage objects.</desc>
   <defs>
     <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
       <feDropShadow dx="0" dy="10" stdDeviation="10" flood-color="#1d1d1f" flood-opacity="0.10"/>
@@ -48,11 +48,13 @@
   <!-- Relationship lines -->
   <path class="line-one" d="M 236 198 C 285 198, 300 198, 350 198"/>
   <path class="line" d="M 514 235 C 570 260, 560 308, 620 334"/>
+  <path class="line" d="M 514 258 C 575 382, 590 545, 620 598"/>
   <path class="line" d="M 514 222 C 690 222, 715 238, 865 258"/>
   <path class="line" d="M 514 210 C 706 178, 838 168, 988 176"/>
   <path class="line" d="M 514 246 C 705 335, 785 493, 938 602"/>
   <path class="line" d="M 514 258 C 285 390, 270 648, 350 822"/>
   <path class="line" d="M 784 365 C 845 345, 862 311, 920 293"/>
+  <path class="line" d="M 820 610 C 865 560, 894 506, 925 474"/>
   <path class="line" d="M 784 432 C 850 510, 878 560, 938 632"/>
   <path class="line" d="M 1160 230 C 1110 260, 1068 270, 1048 296"/>
   <path class="line" d="M 1044 467 C 1076 514, 1088 536, 1100 572"/>
@@ -108,6 +110,19 @@
     <text class="field" x="16" y="166">currency</text>
   </g>
 
+  <!-- strategies -->
+  <g transform="translate(620 536)">
+    <rect class="box" width="200" height="190" rx="10"/>
+    <rect class="head" width="200" height="44" rx="10"/>
+    <text class="schema" x="16" y="18">public playbook</text>
+    <text class="table" x="16" y="36">strategies</text>
+    <text class="field" x="16" y="70"><tspan class="pk">PK</tspan> id</text>
+    <text class="field" x="16" y="94"><tspan class="fk">FK</tspan> user_id</text>
+    <text class="field" x="16" y="118">name</text>
+    <text class="field" x="16" y="142">must_have_rules[]</text>
+    <text class="field" x="16" y="166">preferred_rules[]</text>
+  </g>
+
   <!-- trades -->
   <g transform="translate(865 244)">
     <rect class="box" width="183" height="230" rx="10"/>
@@ -118,9 +133,9 @@
     <text class="field" x="16" y="94"><tspan class="fk">FK</tspan> user_id</text>
     <text class="field" x="16" y="118"><tspan class="fk">FK</tspan> account_id</text>
     <text class="field" x="16" y="142"><tspan class="fk">FK</tspan> asset_id</text>
-    <text class="field" x="16" y="166">direction/status</text>
-    <text class="field" x="16" y="190">entry/exit/quantity</text>
-    <text class="field" x="16" y="214">gross_pnl/net_pnl</text>
+    <text class="field" x="16" y="166"><tspan class="fk">FK</tspan> strategy_id</text>
+    <text class="field" x="16" y="190">direction/status</text>
+    <text class="field" x="16" y="214">entry/exit/quantity</text>
   </g>
 
   <!-- tags -->
