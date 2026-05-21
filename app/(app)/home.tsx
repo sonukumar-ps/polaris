@@ -2,10 +2,11 @@ import { Link } from 'expo-router';
 import type { Href } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import Svg, { Circle, Line, Path, Text as SvgText } from 'react-native-svg';
 
 import { supabase } from '@/lib/supabase';
-import { calculateDashboardMetrics, listTrades } from '@/lib/trades';
-import type { TradeRow } from '@/lib/trades';
+import { buildEquityCurve, calculateDashboardMetrics, listTrades } from '@/lib/trades';
+import type { EquityCurvePoint, TradeRow } from '@/lib/trades';
 
 const NEW_TRADE_ROUTE = '/trades/new' as Href;
 const TRADES_ROUTE = '/trades' as Href;
@@ -15,6 +16,7 @@ export default function HomeScreen() {
   const [dashboardError, setDashboardError] = useState<string | null>(null);
   const [isLoadingDashboard, setIsLoadingDashboard] = useState(true);
   const dashboardMetrics = useMemo(() => calculateDashboardMetrics(trades), [trades]);
+  const equityCurve = useMemo(() => buildEquityCurve(trades), [trades]);
   const metrics = [
     { label: 'Realized P&L', value: formatCurrency(dashboardMetrics.realizedPnl) },
     { label: 'Win rate', value: formatPercent(dashboardMetrics.winRate) },
@@ -97,6 +99,32 @@ export default function HomeScreen() {
         ))}
       </View>
 
+      <View style={styles.chartPanel}>
+        <View style={styles.chartHeader}>
+          <Text style={styles.chartTitle}>Equity curve</Text>
+          <Text style={styles.chartMeta}>
+            {equityCurve.length > 0
+              ? `${equityCurve.length} closed trade${equityCurve.length === 1 ? '' : 's'}`
+              : 'No closed trades'}
+          </Text>
+        </View>
+        {isLoadingDashboard ? (
+          <View style={styles.chartState}>
+            <ActivityIndicator color="#2563EB" />
+            <Text style={styles.chartStateText}>Loading curve...</Text>
+          </View>
+        ) : equityCurve.length === 0 ? (
+          <View style={styles.chartState}>
+            <Text style={styles.chartStateTitle}>No realized P&L yet</Text>
+            <Text style={styles.chartStateText}>
+              Close a trade with an exit price to start the equity curve.
+            </Text>
+          </View>
+        ) : (
+          <EquityCurveChart points={equityCurve} />
+        )}
+      </View>
+
       <View style={styles.panel}>
         <Text style={styles.panelTitle}>Next build target</Text>
         <Text style={styles.panelText}>
@@ -117,6 +145,55 @@ export default function HomeScreen() {
         </View>
       </View>
     </ScrollView>
+  );
+}
+
+function EquityCurveChart({ points }: { points: EquityCurvePoint[] }) {
+  const width = 720;
+  const height = 220;
+  const paddingX = 42;
+  const paddingY = 24;
+  const values = points.map((point) => point.equity);
+  const minValue = Math.min(0, ...values);
+  const maxValue = Math.max(0, ...values);
+  const range = maxValue - minValue || 1;
+  const chartWidth = width - paddingX * 2;
+  const chartHeight = height - paddingY * 2;
+  const coordinates = points.map((point, index) => {
+    const x =
+      points.length === 1 ? paddingX + chartWidth : paddingX + (index / (points.length - 1)) * chartWidth;
+    const y = paddingY + ((maxValue - point.equity) / range) * chartHeight;
+
+    return { ...point, x, y };
+  });
+  const zeroY = paddingY + ((maxValue - 0) / range) * chartHeight;
+  const path = coordinates
+    .map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`)
+    .join(' ');
+  const lastPoint = coordinates[coordinates.length - 1];
+
+  return (
+    <View style={styles.chartFrame}>
+      <Svg height="100%" viewBox={`0 0 ${width} ${height}`} width="100%">
+        <Line
+          stroke="#CBD5E1"
+          strokeDasharray="6 6"
+          strokeWidth={2}
+          x1={paddingX}
+          x2={width - paddingX}
+          y1={zeroY}
+          y2={zeroY}
+        />
+        <SvgText fill="#64748B" fontSize="12" fontWeight="700" x={paddingX} y={18}>
+          {formatCurrency(maxValue)}
+        </SvgText>
+        <SvgText fill="#64748B" fontSize="12" fontWeight="700" x={paddingX} y={height - 8}>
+          {formatCurrency(minValue)}
+        </SvgText>
+        <Path d={path} fill="none" stroke="#2563EB" strokeLinecap="round" strokeLinejoin="round" strokeWidth={4} />
+        {lastPoint ? <Circle cx={lastPoint.x} cy={lastPoint.y} fill="#2563EB" r={5} /> : null}
+      </Svg>
+    </View>
   );
 }
 
@@ -179,6 +256,57 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 12
+  },
+  chartPanel: {
+    maxWidth: 860,
+    gap: 14,
+    borderRadius: 8,
+    borderColor: '#E2E8F0',
+    borderWidth: 1,
+    backgroundColor: '#FFFFFF',
+    padding: 18
+  },
+  chartHeader: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    alignItems: 'center',
+    justifyContent: 'space-between'
+  },
+  chartTitle: {
+    color: '#0F172A',
+    fontSize: 20,
+    fontWeight: '800'
+  },
+  chartMeta: {
+    color: '#64748B',
+    fontSize: 13,
+    fontWeight: '700'
+  },
+  chartFrame: {
+    width: '100%',
+    aspectRatio: 16 / 5,
+    minHeight: 180
+  },
+  chartState: {
+    minHeight: 180,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    borderRadius: 8,
+    backgroundColor: '#F8FAFC',
+    padding: 18
+  },
+  chartStateTitle: {
+    color: '#0F172A',
+    fontSize: 16,
+    fontWeight: '800'
+  },
+  chartStateText: {
+    color: '#475569',
+    fontSize: 14,
+    lineHeight: 20,
+    textAlign: 'center'
   },
   errorPanel: {
     borderRadius: 8,

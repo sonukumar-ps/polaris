@@ -178,7 +178,7 @@ This backlog is ordered by milestone. Pull only the next ready items into `curre
 ### DASH-002: Add simple equity curve
 
 - Type: Feature
-- Status: Todo
+- Status: Done
 - Priority: P1
 - Depends On: DASH-001
 - Acceptance Criteria:
@@ -186,6 +186,9 @@ This backlog is ordered by milestone. Pull only the next ready items into `curre
   - Empty state is useful when no trades exist.
 - Implementation Notes:
   - Choose charting library after web and native constraints are verified.
+  - Added `react-native-svg` for a cross-platform chart primitive.
+  - Dashboard derives the curve from cumulative closed-trade net P&L.
+  - Empty and loading states are shown when curve data is unavailable.
 
 ## V2: Advanced Optimization
 
