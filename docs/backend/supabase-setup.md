@@ -77,6 +77,7 @@ The initial migration creates:
 - Trade tags
 - Trade images
 - Daily account snapshots
+- Private Storage bucket for trade chart screenshots
 - Row Level Security policies for user-owned data
 
 RLS verification results live in `docs/backend/rls-verification.md`.

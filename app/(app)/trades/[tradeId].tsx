@@ -1,18 +1,30 @@
 import { Link, useLocalSearchParams } from 'expo-router';
 import type { Href } from 'expo-router';
+import * as ImagePicker from 'expo-image-picker';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Image,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View
+} from 'react-native';
 
-import { getTrade } from '@/lib/trades';
-import type { TradeSummary } from '@/lib/trades';
+import { getTrade, listTradeImages, uploadTradeImage } from '@/lib/trades';
+import type { TradeImage, TradeSummary } from '@/lib/trades';
 
 const TRADES_ROUTE = '/trades' as Href;
 
 export default function TradeDetailScreen() {
   const { tradeId } = useLocalSearchParams<{ tradeId: string }>();
   const [trade, setTrade] = useState<TradeSummary | null>(null);
+  const [images, setImages] = useState<TradeImage[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [imageError, setImageError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
 
   useEffect(() => {
     let isActive = true;
@@ -28,10 +40,14 @@ export default function TradeDetailScreen() {
       setError(null);
 
       try {
-        const loadedTrade = await getTrade(tradeId);
+        const [loadedTrade, loadedImages] = await Promise.all([
+          getTrade(tradeId),
+          listTradeImages(tradeId)
+        ]);
 
         if (isActive) {
           setTrade(loadedTrade);
+          setImages(loadedImages);
         }
       } catch (loadError) {
         if (isActive) {
@@ -50,6 +66,47 @@ export default function TradeDetailScreen() {
       isActive = false;
     };
   }, [tradeId]);
+
+  async function handleAttachImage() {
+    if (!tradeId) {
+      return;
+    }
+
+    setImageError(null);
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+    if (!permission.granted) {
+      setImageError('Photo library permission is required to attach screenshots.');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      allowsEditing: false,
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.9
+    });
+
+    if (result.canceled) {
+      return;
+    }
+
+    const asset = result.assets[0];
+    setIsUploadingImage(true);
+
+    try {
+      await uploadTradeImage({
+        fileName: asset.fileName,
+        mimeType: asset.mimeType,
+        tradeId,
+        uri: asset.uri
+      });
+      setImages(await listTradeImages(tradeId));
+    } catch (uploadError) {
+      setImageError(uploadError instanceof Error ? uploadError.message : 'Could not attach image.');
+    } finally {
+      setIsUploadingImage(false);
+    }
+  }
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
@@ -122,6 +179,42 @@ export default function TradeDetailScreen() {
               <Text style={styles.notesText}>{trade.notes}</Text>
             </View>
           ) : null}
+        </View>
+      ) : null}
+
+      {trade ? (
+        <View style={styles.panel}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Chart screenshots</Text>
+            <Pressable
+              disabled={isUploadingImage}
+              onPress={handleAttachImage}
+              style={({ pressed }) => [
+                styles.attachButton,
+                (pressed || isUploadingImage) && styles.buttonPressed
+              ]}
+            >
+              <Text style={styles.attachButtonText}>
+                {isUploadingImage ? 'Uploading...' : 'Attach image'}
+              </Text>
+            </Pressable>
+          </View>
+          {imageError ? <Text style={styles.errorText}>{imageError}</Text> : null}
+          {images.length === 0 ? (
+            <Text style={styles.mutedText}>No screenshots attached yet.</Text>
+          ) : (
+            <View style={styles.imageGrid}>
+              {images.map((image) => (
+                <View key={image.id} style={styles.imageFrame}>
+                  {image.signedUrl ? (
+                    <Image source={{ uri: image.signedUrl }} style={styles.chartImage} />
+                  ) : (
+                    <Text style={styles.mutedText}>Preview unavailable</Text>
+                  )}
+                </View>
+              ))}
+            </View>
+          )}
         </View>
       ) : null}
     </ScrollView>
@@ -272,6 +365,52 @@ const styles = StyleSheet.create({
     color: '#334155',
     fontSize: 15,
     lineHeight: 23
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    alignItems: 'center',
+    justifyContent: 'space-between'
+  },
+  sectionTitle: {
+    color: '#0F172A',
+    fontSize: 20,
+    fontWeight: '800'
+  },
+  attachButton: {
+    minHeight: 40,
+    justifyContent: 'center',
+    borderRadius: 8,
+    backgroundColor: '#2563EB',
+    paddingHorizontal: 14
+  },
+  attachButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700'
+  },
+  buttonPressed: {
+    opacity: 0.76
+  },
+  imageGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12
+  },
+  imageFrame: {
+    width: 220,
+    overflow: 'hidden',
+    aspectRatio: 16 / 10,
+    justifyContent: 'center',
+    borderRadius: 8,
+    borderColor: '#E2E8F0',
+    borderWidth: 1,
+    backgroundColor: '#F8FAFC'
+  },
+  chartImage: {
+    width: '100%',
+    height: '100%'
   },
   profit: {
     color: '#166534'

@@ -139,7 +139,7 @@ This backlog is ordered by milestone. Pull only the next ready items into `curre
 ### TRADE-005: Add chart screenshot uploads
 
 - Type: Feature
-- Status: Todo
+- Status: Done
 - Priority: P0
 - Depends On: TRADE-002
 - Acceptance Criteria:
@@ -148,6 +148,12 @@ This backlog is ordered by milestone. Pull only the next ready items into `curre
   - Storage access respects user ownership.
 - Implementation Notes:
   - Use Supabase Storage and Expo image selection.
+  - Added `expo-image-picker`.
+  - Added private `trade-images` Storage bucket migration with user-folder policies.
+  - Trade detail view can attach screenshots and render signed previews.
+  - Screenshot metadata is stored in `trade_images`.
+  - Migration `202605200002_create_trade_images_bucket.sql` still needs to be applied to hosted Supabase before uploads work there.
+  - Verified with `npm run typecheck` and `npm run lint`.
 
 ## V1: Dashboard
 

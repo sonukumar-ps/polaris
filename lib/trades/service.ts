@@ -13,6 +13,7 @@ export type TradeRow = Tables['trades']['Row'];
 type AccountRow = Tables['accounts']['Row'];
 type AssetRow = Tables['assets']['Row'];
 type TagRow = Tables['tags']['Row'];
+type TradeImageRow = Tables['trade_images']['Row'];
 
 type TradeInsert = Tables['trades']['Insert'];
 
@@ -48,6 +49,18 @@ export type TradeTagSummary = Pick<TagRow, 'id' | 'name' | 'type'>;
 export type TradeSummary = TradeRow & {
   asset: Pick<AssetRow, 'asset_class' | 'id' | 'symbol'> | null;
   tags: TradeTagSummary[];
+};
+
+export type TradeImage = TradeImageRow & {
+  signedUrl: string | null;
+};
+
+export type UploadTradeImageInput = {
+  caption?: string | null;
+  fileName?: string | null;
+  mimeType?: string | null;
+  tradeId: string;
+  uri: string;
 };
 
 export class TradeServiceError extends Error {
@@ -215,6 +228,93 @@ export async function listTags(): Promise<TagRow[]> {
   }
 
   return data;
+}
+
+export async function listTradeImages(tradeId: string): Promise<TradeImage[]> {
+  await getTrade(tradeId);
+
+  const { data, error } = await supabase
+    .from('trade_images')
+    .select('*')
+    .eq('trade_id', tradeId)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    throw toTradeServiceError('Could not load trade images.', error);
+  }
+
+  return Promise.all(
+    data.map(async (image) => {
+      const { data: signedUrlData, error: signedUrlError } = await supabase.storage
+        .from('trade-images')
+        .createSignedUrl(image.storage_path, 60 * 10);
+
+      return {
+        ...image,
+        signedUrl: signedUrlError ? null : signedUrlData.signedUrl
+      };
+    })
+  );
+}
+
+export async function uploadTradeImage(input: UploadTradeImageInput): Promise<TradeImageRow> {
+  const userId = await requireUserId();
+  await getTrade(input.tradeId);
+
+  const response = await fetch(input.uri);
+  const fileBody = await response.blob();
+  const storagePath = buildTradeImageStoragePath({
+    fileName: input.fileName,
+    mimeType: input.mimeType,
+    tradeId: input.tradeId,
+    userId
+  });
+
+  const { error: uploadError } = await supabase.storage
+    .from('trade-images')
+    .upload(storagePath, fileBody, {
+      contentType: input.mimeType || fileBody.type || 'image/jpeg',
+      upsert: false
+    });
+
+  if (uploadError) {
+    throw toTradeServiceError('Could not upload chart screenshot.', uploadError);
+  }
+
+  const { data, error: insertError } = await supabase
+    .from('trade_images')
+    .insert({
+      caption: normalizeOptionalText(input.caption),
+      storage_path: storagePath,
+      trade_id: input.tradeId,
+      user_id: userId
+    })
+    .select()
+    .single();
+
+  if (insertError) {
+    throw toTradeServiceError('Could not save screenshot metadata.', insertError);
+  }
+
+  return data;
+}
+
+function buildTradeImageStoragePath(input: {
+  fileName?: string | null;
+  mimeType?: string | null;
+  tradeId: string;
+  userId: string;
+}) {
+  const extensionFromMime = input.mimeType?.split('/')[1];
+  const extensionFromName = input.fileName?.split('.').pop();
+  const extension = sanitizePathSegment(extensionFromName || extensionFromMime || 'jpg');
+  const basename = sanitizePathSegment(input.fileName?.replace(/\.[^.]+$/, '') || 'chart');
+
+  return `${input.userId}/${input.tradeId}/${Date.now()}-${basename}.${extension}`;
+}
+
+function sanitizePathSegment(value: string) {
+  return value.toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-|-$/g, '') || 'file';
 }
 
 async function attachTagsToTrade(input: {
