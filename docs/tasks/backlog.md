@@ -152,7 +152,7 @@ This backlog is ordered by milestone. Pull only the next ready items into `curre
   - Added private `trade-images` Storage bucket migration with user-folder policies.
   - Trade detail view can attach screenshots and render signed previews.
   - Screenshot metadata is stored in `trade_images`.
-  - Migration `202605200002_create_trade_images_bucket.sql` still needs to be applied to hosted Supabase before uploads work there.
+  - Applied migration `202605200002_create_trade_images_bucket.sql` to hosted Supabase.
   - Verified with `npm run typecheck` and `npm run lint`.
 
 ## V1: Dashboard
