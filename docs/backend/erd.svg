@@ -1,0 +1,198 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="1120" viewBox="0 0 1400 1120" role="img" aria-labelledby="title desc">
+  <title id="title">Polaris database entity relationship diagram</title>
+  <desc id="desc">Entity relationship diagram for Polaris Supabase tables, showing auth users, profiles, accounts, trades, assets, tags, trade images, daily snapshots, and storage objects.</desc>
+  <defs>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="10" stdDeviation="10" flood-color="#1d1d1f" flood-opacity="0.10"/>
+    </filter>
+    <marker id="many" markerHeight="12" markerWidth="14" orient="auto" refX="13" refY="6">
+      <path d="M 1 1 L 13 6 L 1 11" fill="none" stroke="#6E6E73" stroke-width="1.8"/>
+      <path d="M 1 6 L 13 6" fill="none" stroke="#6E6E73" stroke-width="1.8"/>
+    </marker>
+    <marker id="one" markerHeight="12" markerWidth="10" orient="auto" refX="8" refY="6">
+      <path d="M 2 1 L 2 11 M 7 1 L 7 11" fill="none" stroke="#6E6E73" stroke-width="1.8"/>
+    </marker>
+    <linearGradient id="page" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#F7FBFF"/>
+      <stop offset="100%" stop-color="#F7F7F5"/>
+    </linearGradient>
+    <style>
+      .bg { fill: url(#page); }
+      .title { fill: #1D1D1F; font: 800 34px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+      .subtitle { fill: #6E6E73; font: 500 16px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+      .box { fill: #FFFFFF; stroke: #D9D9D4; stroke-width: 1.5; filter: url(#shadow); }
+      .box-owner { stroke: #007AFF; }
+      .box-ref { stroke: #30D158; }
+      .box-storage { stroke: #FF9F0A; }
+      .head { fill: #F2F8FF; }
+      .head-ref { fill: #EEF9F0; }
+      .head-storage { fill: #FFF4E5; }
+      .table { fill: #1D1D1F; font: 800 17px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; letter-spacing: .2px; }
+      .schema { fill: #6E6E73; font: 700 11px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; text-transform: uppercase; }
+      .field { fill: #343437; font: 500 13px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
+      .pk { fill: #007AFF; font-weight: 800; }
+      .fk { fill: #8E8E93; font-weight: 800; }
+      .line { fill: none; stroke: #6E6E73; stroke-width: 2; marker-start: url(#one); marker-end: url(#many); }
+      .line-one { fill: none; stroke: #6E6E73; stroke-width: 2; marker-start: url(#one); marker-end: url(#one); }
+      .label { fill: #6E6E73; font: 700 12px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+      .note { fill: #FFFFFF; stroke: #D9D9D4; stroke-width: 1.2; }
+      .note-title { fill: #1D1D1F; font: 800 14px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+      .note-text { fill: #6E6E73; font: 500 12px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    </style>
+  </defs>
+
+  <rect class="bg" width="1400" height="1120"/>
+  <text class="title" x="54" y="64">Polaris Database ERD</text>
+  <text class="subtitle" x="54" y="94">User-owned trade journal data, shared assets, tags, screenshots, and Supabase auth/storage boundaries.</text>
+
+  <!-- Relationship lines -->
+  <path class="line-one" d="M 236 198 C 285 198, 300 198, 350 198"/>
+  <path class="line" d="M 514 235 C 570 260, 560 308, 620 334"/>
+  <path class="line" d="M 514 222 C 690 222, 715 238, 865 258"/>
+  <path class="line" d="M 514 210 C 706 178, 838 168, 988 176"/>
+  <path class="line" d="M 514 246 C 705 335, 785 493, 938 602"/>
+  <path class="line" d="M 514 258 C 285 390, 270 648, 350 822"/>
+  <path class="line" d="M 784 365 C 845 345, 862 311, 920 293"/>
+  <path class="line" d="M 784 432 C 850 510, 878 560, 938 632"/>
+  <path class="line" d="M 1160 230 C 1110 260, 1068 270, 1048 296"/>
+  <path class="line" d="M 1044 467 C 1076 514, 1088 536, 1100 572"/>
+  <path class="line" d="M 1160 728 C 1132 674, 1125 636, 1110 596"/>
+  <path class="line" d="M 1044 430 C 880 548, 760 694, 608 823"/>
+  <path class="line" d="M 608 862 C 775 870, 915 856, 1048 837"/>
+  <path class="line" d="M 1210 857 C 1245 880, 1268 902, 1286 930"/>
+
+  <!-- auth.users -->
+  <g transform="translate(54 150)">
+    <rect class="box box-owner" width="182" height="116" rx="10"/>
+    <rect class="head" width="182" height="44" rx="10"/>
+    <text class="schema" x="16" y="18">supabase auth</text>
+    <text class="table" x="16" y="36">auth.users</text>
+    <text class="field" x="16" y="70"><tspan class="pk">PK</tspan> id uuid</text>
+    <text class="field" x="16" y="94">raw_user_meta_data</text>
+  </g>
+
+  <!-- profiles -->
+  <g transform="translate(350 136)">
+    <rect class="box box-owner" width="164" height="166" rx="10"/>
+    <rect class="head" width="164" height="44" rx="10"/>
+    <text class="schema" x="16" y="18">public</text>
+    <text class="table" x="16" y="36">profiles</text>
+    <text class="field" x="16" y="70"><tspan class="pk">PK</tspan> <tspan class="fk">FK</tspan> id</text>
+    <text class="field" x="16" y="94">display_name</text>
+    <text class="field" x="16" y="118">timezone</text>
+    <text class="field" x="16" y="142">base_currency</text>
+  </g>
+
+  <!-- accounts -->
+  <g transform="translate(620 302)">
+    <rect class="box" width="164" height="166" rx="10"/>
+    <rect class="head" width="164" height="44" rx="10"/>
+    <text class="schema" x="16" y="18">public</text>
+    <text class="table" x="16" y="36">accounts</text>
+    <text class="field" x="16" y="70"><tspan class="pk">PK</tspan> id</text>
+    <text class="field" x="16" y="94"><tspan class="fk">FK</tspan> user_id</text>
+    <text class="field" x="16" y="118">name</text>
+    <text class="field" x="16" y="142">broker_name</text>
+  </g>
+
+  <!-- assets -->
+  <g transform="translate(1160 136)">
+    <rect class="box box-ref" width="184" height="190" rx="10"/>
+    <rect class="head-ref" width="184" height="44" rx="10"/>
+    <text class="schema" x="16" y="18">public shared</text>
+    <text class="table" x="16" y="36">assets</text>
+    <text class="field" x="16" y="70"><tspan class="pk">PK</tspan> id</text>
+    <text class="field" x="16" y="94">symbol</text>
+    <text class="field" x="16" y="118">asset_class</text>
+    <text class="field" x="16" y="142">exchange</text>
+    <text class="field" x="16" y="166">currency</text>
+  </g>
+
+  <!-- trades -->
+  <g transform="translate(865 244)">
+    <rect class="box" width="183" height="230" rx="10"/>
+    <rect class="head" width="183" height="44" rx="10"/>
+    <text class="schema" x="16" y="18">public core</text>
+    <text class="table" x="16" y="36">trades</text>
+    <text class="field" x="16" y="70"><tspan class="pk">PK</tspan> id</text>
+    <text class="field" x="16" y="94"><tspan class="fk">FK</tspan> user_id</text>
+    <text class="field" x="16" y="118"><tspan class="fk">FK</tspan> account_id</text>
+    <text class="field" x="16" y="142"><tspan class="fk">FK</tspan> asset_id</text>
+    <text class="field" x="16" y="166">direction/status</text>
+    <text class="field" x="16" y="190">entry/exit/quantity</text>
+    <text class="field" x="16" y="214">gross_pnl/net_pnl</text>
+  </g>
+
+  <!-- tags -->
+  <g transform="translate(1160 686)">
+    <rect class="box" width="184" height="166" rx="10"/>
+    <rect class="head" width="184" height="44" rx="10"/>
+    <text class="schema" x="16" y="18">public</text>
+    <text class="table" x="16" y="36">tags</text>
+    <text class="field" x="16" y="70"><tspan class="pk">PK</tspan> id</text>
+    <text class="field" x="16" y="94"><tspan class="fk">FK</tspan> user_id</text>
+    <text class="field" x="16" y="118">name</text>
+    <text class="field" x="16" y="142">type/color</text>
+  </g>
+
+  <!-- trade_tags -->
+  <g transform="translate(938 572)">
+    <rect class="box" width="172" height="128" rx="10"/>
+    <rect class="head" width="172" height="44" rx="10"/>
+    <text class="schema" x="16" y="18">public join</text>
+    <text class="table" x="16" y="36">trade_tags</text>
+    <text class="field" x="16" y="70"><tspan class="pk">PK</tspan> <tspan class="fk">FK</tspan> trade_id</text>
+    <text class="field" x="16" y="94"><tspan class="pk">PK</tspan> <tspan class="fk">FK</tspan> tag_id</text>
+  </g>
+
+  <!-- trade_images -->
+  <g transform="translate(1048 796)">
+    <rect class="box box-storage" width="162" height="166" rx="10"/>
+    <rect class="head-storage" width="162" height="44" rx="10"/>
+    <text class="schema" x="16" y="18">public</text>
+    <text class="table" x="16" y="36">trade_images</text>
+    <text class="field" x="16" y="70"><tspan class="pk">PK</tspan> id</text>
+    <text class="field" x="16" y="94"><tspan class="fk">FK</tspan> user_id</text>
+    <text class="field" x="16" y="118"><tspan class="fk">FK</tspan> trade_id</text>
+    <text class="field" x="16" y="142">storage_path</text>
+  </g>
+
+  <!-- storage objects -->
+  <g transform="translate(1210 930)">
+    <rect class="box box-storage" width="154" height="126" rx="10"/>
+    <rect class="head-storage" width="154" height="44" rx="10"/>
+    <text class="schema" x="16" y="18">supabase storage</text>
+    <text class="table" x="16" y="36">objects</text>
+    <text class="field" x="16" y="70"><tspan class="pk">PK</tspan> id</text>
+    <text class="field" x="16" y="94"><tspan class="fk">FK</tspan> bucket_id</text>
+  </g>
+
+  <!-- snapshots -->
+  <g transform="translate(350 782)">
+    <rect class="box" width="258" height="182" rx="10"/>
+    <rect class="head" width="258" height="44" rx="10"/>
+    <text class="schema" x="16" y="18">public analytics</text>
+    <text class="table" x="16" y="36">daily_account_snapshots</text>
+    <text class="field" x="16" y="70"><tspan class="pk">PK</tspan> id</text>
+    <text class="field" x="16" y="94"><tspan class="fk">FK</tspan> user_id</text>
+    <text class="field" x="16" y="118"><tspan class="fk">FK</tspan> account_id</text>
+    <text class="field" x="16" y="142">snapshot_date</text>
+    <text class="field" x="16" y="166">equity/realized_pnl</text>
+  </g>
+
+  <!-- notes -->
+  <g transform="translate(54 920)">
+    <rect class="note" width="236" height="136" rx="10"/>
+    <text class="note-title" x="16" y="30">Reading guide</text>
+    <text class="note-text" x="16" y="56">Blue: identity and ownership root</text>
+    <text class="note-text" x="16" y="80">Green: shared reference catalog</text>
+    <text class="note-text" x="16" y="104">Orange: screenshot storage path</text>
+    <text class="note-text" x="16" y="128">Crow foot: one-to-many relationship</text>
+  </g>
+
+  <text class="label" x="266" y="188">1:1 signup trigger</text>
+  <text class="label" x="792" y="274">account trades</text>
+  <text class="label" x="1072" y="262">traded asset</text>
+  <text class="label" x="1118" y="596">many-to-many tags</text>
+  <text class="label" x="1000" y="792">screenshots</text>
+</svg>

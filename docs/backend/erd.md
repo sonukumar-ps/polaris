@@ -4,6 +4,12 @@ This diagram is generated from the Supabase migrations in `supabase/migrations`.
 It covers every application table plus the Supabase-managed tables the app depends on:
 `auth.users`, `storage.buckets`, and `storage.objects`.
 
+## Portable Diagram
+
+Use this SVG when Mermaid is not supported by your Markdown renderer.
+
+![Polaris database ERD](./erd.svg)
+
 ## Domain Map
 
 ```mermaid
