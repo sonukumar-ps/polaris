@@ -21,6 +21,22 @@ insightModule._compile(output, sourcePath);
 
 const { generateInsightCoach } = insightModule.exports;
 
+const analyticsPath = path.join(repoRoot, 'lib/trades/analytics.ts');
+const analyticsSource = fs.readFileSync(analyticsPath, 'utf8');
+const analyticsOutput = ts.transpileModule(analyticsSource, {
+  compilerOptions: {
+    module: ts.ModuleKind.CommonJS,
+    target: ts.ScriptTarget.ES2020
+  },
+  fileName: analyticsPath
+}).outputText;
+const analyticsModule = new Module(analyticsPath, module);
+analyticsModule.filename = analyticsPath;
+analyticsModule.paths = Module._nodeModulePaths(repoRoot);
+analyticsModule._compile(analyticsOutput, analyticsPath);
+
+const { calculateStrategyPerformance } = analyticsModule.exports;
+
 function trade(overrides = {}) {
   return {
     asset: { asset_class: 'stock', id: `asset-${overrides.id ?? 'a'}`, symbol: overrides.symbol ?? 'AAPL' },
@@ -81,5 +97,44 @@ const positiveInsight = generateInsightCoach([
 ]);
 assert.equal(positiveInsight.id, 'positive-expectancy');
 assert.equal(positiveInsight.severity, 'positive');
+
+const strategyPerformance = calculateStrategyPerformance([
+  trade({
+    id: 'trend-1',
+    netPnl: 120,
+    status: 'closed',
+    strategy: { id: 'trend', name: 'Trend Continuation' },
+    strategy_id: 'trend'
+  }),
+  trade({
+    id: 'trend-2',
+    netPnl: -20,
+    status: 'closed',
+    strategy: { id: 'trend', name: 'Trend Continuation' },
+    strategy_id: 'trend'
+  }),
+  trade({
+    id: 'reversal-1',
+    netPnl: -50,
+    status: 'closed',
+    strategy: { id: 'reversal', name: 'Reversal at Level' },
+    strategy_id: 'reversal'
+  }),
+  trade({
+    id: 'open-trend',
+    netPnl: null,
+    status: 'open',
+    strategy: { id: 'trend', name: 'Trend Continuation' },
+    strategy_id: 'trend'
+  })
+]);
+assert.equal(strategyPerformance.length, 2);
+assert.equal(strategyPerformance[0].name, 'Trend Continuation');
+assert.equal(strategyPerformance[0].tradeCount, 2);
+assert.equal(strategyPerformance[0].netPnl, 100);
+assert.equal(strategyPerformance[0].winRate, 0.5);
+assert.equal(strategyPerformance[0].profitFactor, 6);
+assert.equal(strategyPerformance[1].name, 'Reversal at Level');
+assert.equal(strategyPerformance[1].netPnl, -50);
 
 console.log('insights.test.cjs passed');

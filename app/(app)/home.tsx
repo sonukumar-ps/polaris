@@ -17,11 +17,19 @@ import { supabase } from '@/lib/supabase';
 import {
   buildEquityCurve,
   calculateDashboardMetrics,
+  calculateStrategyPerformance,
   generateInsightCoach,
   listAccounts,
   listTradeSummaries
 } from '@/lib/trades';
-import type { EquityCurvePoint, Insight, InsightMetric, TradeSummary, TradingAccount } from '@/lib/trades';
+import type {
+  EquityCurvePoint,
+  Insight,
+  InsightMetric,
+  StrategyPerformance,
+  TradeSummary,
+  TradingAccount
+} from '@/lib/trades';
 
 const NEW_TRADE_ROUTE = '/trades/new' as Href;
 const TRADES_ROUTE = '/trades' as Href;
@@ -40,6 +48,7 @@ export default function HomeScreen() {
   const dashboardMetrics = useMemo(() => calculateDashboardMetrics(trades), [trades]);
   const equityCurve = useMemo(() => buildEquityCurve(trades), [trades]);
   const insight = useMemo(() => generateInsightCoach(trades), [trades]);
+  const strategyPerformance = useMemo(() => calculateStrategyPerformance(trades), [trades]);
   const recentTrades = trades.slice(0, 5);
   const metrics = [
     {
@@ -203,6 +212,8 @@ export default function HomeScreen() {
       </View>
 
       <InsightCoachCard insight={insight} isLoading={isLoadingDashboard} />
+
+      <StrategyPulseCard isLoading={isLoadingDashboard} strategies={strategyPerformance} />
 
       <View style={styles.dashboardGrid}>
         <Card style={styles.chartCard}>
@@ -413,6 +424,99 @@ function InsightMetricView({ metric }: { metric: InsightMetric }) {
         {metric.value}
       </Text>
       <Text style={[styles.insightMetricLabel, { color: theme.muted }]}>{metric.label}</Text>
+    </View>
+  );
+}
+
+function StrategyPulseCard({
+  isLoading,
+  strategies
+}: {
+  isLoading: boolean;
+  strategies: StrategyPerformance[];
+}) {
+  const theme = useAppTheme();
+  const bestStrategy = strategies[0] ?? null;
+  const reviewStrategy = [...strategies].reverse().find((strategy) => strategy.netPnl < 0) ?? null;
+  const visibleStrategies = strategies.slice(0, 3);
+
+  return (
+    <Card style={styles.strategyCard}>
+      <View style={styles.cardHeader}>
+        <View>
+          <Text style={[styles.cardTitle, { color: theme.text }]}>Strategy pulse</Text>
+          <Text style={[styles.cardMeta, { color: theme.muted }]}>Closed-trade performance for selected accounts</Text>
+        </View>
+        <SecondaryLinkButton href={TRADES_ROUTE}>Review trades</SecondaryLinkButton>
+      </View>
+      {isLoading ? (
+        <View style={[styles.strategyLoading, { backgroundColor: theme.mutedSurface }]}>
+          <ActivityIndicator color={theme.accent} />
+          <Text style={[styles.stateText, { color: theme.muted }]}>Reading strategies...</Text>
+        </View>
+      ) : strategies.length === 0 ? (
+        <EmptyState
+          body="Closed trades with a selected strategy will show which playbooks deserve more attention."
+          title="No strategy signal yet"
+        />
+      ) : (
+        <>
+          <View style={styles.strategyHighlights}>
+            <StrategyHighlight
+              label="Working best"
+              strategy={bestStrategy}
+              tone={bestStrategy && bestStrategy.netPnl >= 0 ? 'positive' : 'neutral'}
+            />
+            <StrategyHighlight label="Review next" strategy={reviewStrategy} tone="warning" />
+          </View>
+          <View style={styles.strategyRows}>
+            {visibleStrategies.map((strategy) => (
+              <View key={strategy.strategyId ?? strategy.name} style={styles.strategyRow}>
+                <View style={styles.strategyNameBlock}>
+                  <Text style={[styles.strategyName, { color: theme.text }]}>{strategy.name}</Text>
+                  <Text style={[styles.strategyMeta, { color: theme.muted }]}>
+                    {strategy.tradeCount} closed | {formatPercent(strategy.winRate)} win | PF{' '}
+                    {formatProfitFactor(strategy.profitFactor)}
+                  </Text>
+                </View>
+                <Text
+                  style={[
+                    styles.strategyPnl,
+                    { color: strategy.netPnl >= 0 ? theme.positive : theme.danger }
+                  ]}
+                >
+                  {formatCurrency(strategy.netPnl)}
+                </Text>
+              </View>
+            ))}
+          </View>
+        </>
+      )}
+    </Card>
+  );
+}
+
+function StrategyHighlight({
+  label,
+  strategy,
+  tone
+}: {
+  label: string;
+  strategy: StrategyPerformance | null;
+  tone: 'positive' | 'warning' | 'neutral';
+}) {
+  const theme = useAppTheme();
+  const toneColor = tone === 'positive' ? theme.positive : tone === 'warning' ? theme.danger : theme.text;
+
+  return (
+    <View style={[styles.strategyHighlight, { backgroundColor: theme.mutedSurface }]}>
+      <Text style={[styles.strategyHighlightLabel, { color: theme.muted }]}>{label}</Text>
+      <Text style={[styles.strategyHighlightName, { color: strategy ? theme.text : theme.muted }]}>
+        {strategy?.name ?? 'Nothing urgent'}
+      </Text>
+      <Text style={[styles.strategyHighlightValue, { color: strategy ? toneColor : theme.muted }]}>
+        {strategy ? `${formatCurrency(strategy.netPnl)} avg ${formatCurrency(strategy.averagePnl)}` : 'Keep collecting data'}
+      </Text>
     </View>
   );
 }
@@ -629,6 +733,68 @@ const styles = StyleSheet.create({
   },
   insightMetricLabel: {
     fontSize: 12,
+    fontWeight: '800'
+  },
+  strategyCard: {
+    gap: 18
+  },
+  strategyLoading: {
+    minHeight: 116,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    borderRadius: 8,
+    padding: 18
+  },
+  strategyHighlights: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10
+  },
+  strategyHighlight: {
+    minWidth: 220,
+    flex: 1,
+    gap: 6,
+    borderRadius: 8,
+    padding: 14
+  },
+  strategyHighlightLabel: {
+    fontSize: 12,
+    fontWeight: '800',
+    textTransform: 'uppercase'
+  },
+  strategyHighlightName: {
+    fontSize: 18,
+    fontWeight: '800'
+  },
+  strategyHighlightValue: {
+    fontSize: 13,
+    fontWeight: '800'
+  },
+  strategyRows: {
+    gap: 4
+  },
+  strategyRow: {
+    minHeight: 58,
+    flexDirection: 'row',
+    gap: 12,
+    alignItems: 'center',
+    justifyContent: 'space-between'
+  },
+  strategyNameBlock: {
+    flex: 1,
+    gap: 4
+  },
+  strategyName: {
+    fontSize: 16,
+    fontWeight: '800'
+  },
+  strategyMeta: {
+    fontSize: 12,
+    fontWeight: '700'
+  },
+  strategyPnl: {
+    fontSize: 15,
     fontWeight: '800'
   },
   dashboardGrid: {
