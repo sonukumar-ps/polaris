@@ -17,6 +17,7 @@ type TagRow = Tables['tags']['Row'];
 type TradeImageRow = Tables['trade_images']['Row'];
 
 type TradeInsert = Tables['trades']['Insert'];
+type TradeUpdate = Tables['trades']['Update'];
 
 export type CreateManualTradeInput = {
   accountId: string;
@@ -33,6 +34,10 @@ export type CreateManualTradeInput = {
   strategyId: string;
   symbol: string;
   tags?: ManualTradeTagInput[];
+};
+
+export type UpdateManualTradeInput = CreateManualTradeInput & {
+  tradeId: string;
 };
 
 export type CreateStrategyInput = {
@@ -130,6 +135,67 @@ export async function createManualTrade(input: CreateManualTradeInput): Promise<
   }
 
   await attachTagsToTrade({
+    tags: [{ name: strategy.name, type: 'strategy' }, ...(input.tags ?? [])],
+    tradeId: data.id,
+    userId
+  });
+
+  return data;
+}
+
+export async function updateManualTrade(input: UpdateManualTradeInput): Promise<TradeRow> {
+  const userId = await requireUserId();
+  await requireOwnedTrade(input.tradeId, userId);
+
+  const asset = await findOrCreateAsset({
+    assetClass: input.assetClass ?? 'other',
+    exchange: input.exchange ?? null,
+    symbol: input.symbol
+  });
+  const account = await requireOwnedAccount(input.accountId, userId);
+  const strategy = await requireOwnedStrategy(input.strategyId, userId);
+  const realizedPnl =
+    input.closedAt && input.exitPrice
+      ? calculateRealizedPnl({
+          direction: input.direction,
+          entryPrice: input.entryPrice,
+          exitPrice: input.exitPrice,
+          fees: input.fees ?? 0,
+          quantity: input.quantity
+        })
+      : null;
+
+  const update: TradeUpdate = {
+    account_id: account.id,
+    asset_id: asset.id,
+    closed_at: input.closedAt ?? null,
+    direction: input.direction,
+    entry_price: input.entryPrice,
+    exit_price: input.exitPrice ?? null,
+    fees: input.fees ?? 0,
+    gross_pnl: realizedPnl?.grossPnl ?? null,
+    net_pnl: realizedPnl?.netPnl ?? null,
+    notes: normalizeOptionalText(input.notes),
+    opened_at: input.openedAt,
+    quantity: input.quantity,
+    strategy_id: strategy.id,
+    status: input.closedAt && input.exitPrice ? 'closed' : 'open',
+    updated_at: new Date().toISOString()
+  };
+
+  const { data, error } = await supabase
+    .from('trades')
+    .update(update)
+    .eq('id', input.tradeId)
+    .eq('user_id', userId)
+    .select()
+    .single();
+
+  if (error) {
+    throw toTradeServiceError('Could not update trade.', error);
+  }
+
+  await replaceTagsForTrade({
     tags: [{ name: strategy.name, type: 'strategy' }, ...(input.tags ?? [])],
     tradeId: data.id,
     userId
@@ -442,6 +508,20 @@ async function attachTagsToTrade(input: {
   }
 }
 
+async function replaceTagsForTrade(input: {
+  tags: ManualTradeTagInput[];
+  tradeId: string;
+  userId: string;
+}) {
+  const { error } = await supabase.from('trade_tags').delete().eq('trade_id', input.tradeId);
+
+  if (error) {
+    throw toTradeServiceError('Could not clear trade tags.', error);
+  }
+
+  await attachTagsToTrade(input);
+}
+
 async function findOrCreateTag(input: {
   name: string;
   type: TagType;
@@ -733,6 +813,25 @@ async function requireOwnedStrategy(strategyId: string, userId: string): Promise
 
   if (!data) {
     throw new TradeServiceError('Selected strategy was not found.');
+  }
+
+  return data;
+}
+
+async function requireOwnedTrade(tradeId: string, userId: string): Promise<TradeRow> {
+  const { data, error } = await supabase
+    .from('trades')
+    .select('*')
+    .eq('id', tradeId)
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (error) {
+    throw toTradeServiceError('Could not check trade.', error);
+  }
+
+  if (!data) {
+    throw new TradeServiceError('Trade was not found.');
   }
 
   return data;
