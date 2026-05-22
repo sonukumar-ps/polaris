@@ -21,6 +21,7 @@ export type Database = {
           currency: string
           id: string
           is_archived: boolean
+          is_main: boolean
           name: string
           updated_at: string
           user_id: string
@@ -31,6 +32,7 @@ export type Database = {
           currency?: string
           id?: string
           is_archived?: boolean
+          is_main?: boolean
           name: string
           updated_at?: string
           user_id: string
@@ -41,6 +43,7 @@ export type Database = {
           currency?: string
           id?: string
           is_archived?: boolean
+          is_main?: boolean
           name?: string
           updated_at?: string
           user_id?: string
@@ -195,6 +198,56 @@ export type Database = {
           },
         ]
       }
+      strategies: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_archived: boolean
+          market_conditions: string | null
+          must_have_rules: string[]
+          name: string
+          preferred_rules: string[]
+          qualitative_notes: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_archived?: boolean
+          market_conditions?: string | null
+          must_have_rules?: string[]
+          name: string
+          preferred_rules?: string[]
+          qualitative_notes?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_archived?: boolean
+          market_conditions?: string | null
+          must_have_rules?: string[]
+          name?: string
+          preferred_rules?: string[]
+          qualitative_notes?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "strategies_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       trade_images: {
         Row: {
           caption: string | null
@@ -289,6 +342,7 @@ export type Database = {
           r_multiple: number | null
           risk_amount: number | null
           status: Database["public"]["Enums"]["trade_status"]
+          strategy_id: string | null
           updated_at: string
           user_id: string
         }
@@ -310,6 +364,7 @@ export type Database = {
           r_multiple?: number | null
           risk_amount?: number | null
           status?: Database["public"]["Enums"]["trade_status"]
+          strategy_id?: string | null
           updated_at?: string
           user_id: string
         }
@@ -331,6 +386,7 @@ export type Database = {
           r_multiple?: number | null
           risk_amount?: number | null
           status?: Database["public"]["Enums"]["trade_status"]
+          strategy_id?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -347,6 +403,13 @@ export type Database = {
             columns: ["asset_id"]
             isOneToOne: false
             referencedRelation: "assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trades_strategy_id_fkey"
+            columns: ["strategy_id"]
+            isOneToOne: false
+            referencedRelation: "strategies"
             referencedColumns: ["id"]
           },
           {

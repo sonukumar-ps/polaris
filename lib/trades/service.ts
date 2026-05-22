@@ -12,13 +12,15 @@ export type TradeRow = Tables['trades']['Row'];
 
 type AccountRow = Tables['accounts']['Row'];
 type AssetRow = Tables['assets']['Row'];
+type StrategyRow = Tables['strategies']['Row'];
 type TagRow = Tables['tags']['Row'];
 type TradeImageRow = Tables['trade_images']['Row'];
 
 type TradeInsert = Tables['trades']['Insert'];
+type TradeUpdate = Tables['trades']['Update'];
 
 export type CreateManualTradeInput = {
-  accountId?: string;
+  accountId: string;
   assetClass?: AssetClass;
   closedAt?: string | null;
   direction: TradeDirection;
@@ -29,11 +31,26 @@ export type CreateManualTradeInput = {
   notes?: string | null;
   openedAt: string;
   quantity: number;
+  strategyId: string;
   symbol: string;
   tags?: ManualTradeTagInput[];
 };
 
+export type UpdateManualTradeInput = CreateManualTradeInput & {
+  tradeId: string;
+};
+
+export type CreateStrategyInput = {
+  description?: string | null;
+  marketConditions?: string | null;
+  mustHaveRules?: string[];
+  name: string;
+  preferredRules?: string[];
+  qualitativeNotes?: string | null;
+};
+
 export type ListTradesOptions = {
+  accountIds?: string[];
   limit?: number;
   tagId?: string;
 };
@@ -44,10 +61,13 @@ export type ManualTradeTagInput = {
 };
 
 export type JournalTag = TagRow;
+export type TradingStrategy = StrategyRow;
+export type TradingAccount = AccountRow;
 export type TradeTagSummary = Pick<TagRow, 'id' | 'name' | 'type'>;
 
 export type TradeSummary = TradeRow & {
   asset: Pick<AssetRow, 'asset_class' | 'id' | 'symbol'> | null;
+  strategy: Pick<StrategyRow, 'id' | 'name'> | null;
   tags: TradeTagSummary[];
 };
 
@@ -77,9 +97,8 @@ export async function createManualTrade(input: CreateManualTradeInput): Promise<
     exchange: input.exchange ?? null,
     symbol: input.symbol
   });
-  const account = input.accountId
-    ? await requireOwnedAccount(input.accountId, userId)
-    : await getOrCreateDefaultAccount(userId);
+  const account = await requireOwnedAccount(input.accountId, userId);
+  const strategy = await requireOwnedStrategy(input.strategyId, userId);
   const realizedPnl =
     input.closedAt && input.exitPrice
       ? calculateRealizedPnl({
@@ -104,6 +123,7 @@ export async function createManualTrade(input: CreateManualTradeInput): Promise<
     notes: normalizeOptionalText(input.notes),
     opened_at: input.openedAt,
     quantity: input.quantity,
+    strategy_id: strategy.id,
     status: input.closedAt && input.exitPrice ? 'closed' : 'open',
     user_id: userId
   };
@@ -115,7 +135,68 @@ export async function createManualTrade(input: CreateManualTradeInput): Promise<
   }
 
   await attachTagsToTrade({
-    tags: input.tags ?? [],
+    tags: [{ name: strategy.name, type: 'strategy' }, ...(input.tags ?? [])],
+    tradeId: data.id,
+    userId
+  });
+
+  return data;
+}
+
+export async function updateManualTrade(input: UpdateManualTradeInput): Promise<TradeRow> {
+  const userId = await requireUserId();
+  await requireOwnedTrade(input.tradeId, userId);
+
+  const asset = await findOrCreateAsset({
+    assetClass: input.assetClass ?? 'other',
+    exchange: input.exchange ?? null,
+    symbol: input.symbol
+  });
+  const account = await requireOwnedAccount(input.accountId, userId);
+  const strategy = await requireOwnedStrategy(input.strategyId, userId);
+  const realizedPnl =
+    input.closedAt && input.exitPrice
+      ? calculateRealizedPnl({
+          direction: input.direction,
+          entryPrice: input.entryPrice,
+          exitPrice: input.exitPrice,
+          fees: input.fees ?? 0,
+          quantity: input.quantity
+        })
+      : null;
+
+  const update: TradeUpdate = {
+    account_id: account.id,
+    asset_id: asset.id,
+    closed_at: input.closedAt ?? null,
+    direction: input.direction,
+    entry_price: input.entryPrice,
+    exit_price: input.exitPrice ?? null,
+    fees: input.fees ?? 0,
+    gross_pnl: realizedPnl?.grossPnl ?? null,
+    net_pnl: realizedPnl?.netPnl ?? null,
+    notes: normalizeOptionalText(input.notes),
+    opened_at: input.openedAt,
+    quantity: input.quantity,
+    strategy_id: strategy.id,
+    status: input.closedAt && input.exitPrice ? 'closed' : 'open',
+    updated_at: new Date().toISOString()
+  };
+
+  const { data, error } = await supabase
+    .from('trades')
+    .update(update)
+    .eq('id', input.tradeId)
+    .eq('user_id', userId)
+    .select()
+    .single();
+
+  if (error) {
+    throw toTradeServiceError('Could not update trade.', error);
+  }
+
+  await replaceTagsForTrade({
+    tags: [{ name: strategy.name, type: 'strategy' }, ...(input.tags ?? [])],
     tradeId: data.id,
     userId
   });
@@ -132,6 +213,10 @@ export async function listTrades(options: ListTradesOptions = {}): Promise<Trade
     return [];
   }
 
+  if (options.accountIds && options.accountIds.length === 0) {
+    return [];
+  }
+
   let query = supabase
     .from('trades')
     .select('*')
@@ -143,10 +228,33 @@ export async function listTrades(options: ListTradesOptions = {}): Promise<Trade
     query = query.in('id', taggedTradeIds);
   }
 
+  if (options.accountIds) {
+    query = query.in('account_id', options.accountIds);
+  }
+
   const { data, error } = await query;
 
   if (error) {
     throw toTradeServiceError('Could not load trades.', error);
+  }
+
+  return data;
+}
+
+export async function listAccounts(): Promise<AccountRow[]> {
+  const userId = await requireUserId();
+  await getOrCreateDefaultAccount(userId);
+
+  const { data, error } = await supabase
+    .from('accounts')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('is_archived', false)
+    .order('is_main', { ascending: false })
+    .order('created_at', { ascending: true });
+
+  if (error) {
+    throw toTradeServiceError('Could not load trading accounts.', error);
   }
 
   return data;
@@ -172,10 +280,14 @@ export async function listTradeSummaries(options: ListTradesOptions = {}): Promi
   const assetsById = new Map(assets.map((asset) => [asset.id, asset]));
 
   const tagsByTradeId = await getTagsByTradeId(trades.map((trade) => trade.id));
+  const strategiesById = await getStrategiesById(
+    trades.map((trade) => trade.strategy_id).filter((strategyId): strategyId is string => strategyId !== null)
+  );
 
   return trades.map((trade) => ({
     ...trade,
     asset: assetsById.get(trade.asset_id) ?? null,
+    strategy: trade.strategy_id ? (strategiesById.get(trade.strategy_id) ?? null) : null,
     tags: tagsByTradeId.get(trade.id) ?? []
   }));
 }
@@ -210,8 +322,54 @@ export async function getTrade(tradeId: string): Promise<TradeSummary> {
   return {
     ...trade,
     asset: asset ?? null,
+    strategy: trade.strategy_id ? ((await getStrategiesById([trade.strategy_id])).get(trade.strategy_id) ?? null) : null,
     tags: (await getTagsByTradeId([trade.id])).get(trade.id) ?? []
   };
+}
+
+export async function listStrategies(): Promise<StrategyRow[]> {
+  const userId = await requireUserId();
+  const { data, error } = await supabase
+    .from('strategies')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('is_archived', false)
+    .order('created_at', { ascending: true });
+
+  if (error) {
+    throw toTradeServiceError('Could not load strategies.', error);
+  }
+
+  return data;
+}
+
+export async function createStrategy(input: CreateStrategyInput): Promise<StrategyRow> {
+  const userId = await requireUserId();
+  const name = input.name.trim();
+
+  if (!name) {
+    throw new TradeServiceError('Strategy name is required.');
+  }
+
+  const { data, error } = await supabase
+    .from('strategies')
+    .insert({
+      description: normalizeOptionalText(input.description),
+      market_conditions: normalizeOptionalText(input.marketConditions),
+      must_have_rules: normalizeRuleList(input.mustHaveRules),
+      name,
+      preferred_rules: normalizeRuleList(input.preferredRules),
+      qualitative_notes: normalizeOptionalText(input.qualitativeNotes),
+      user_id: userId
+    })
+    .select()
+    .single();
+
+  if (error) {
+    throw toTradeServiceError('Could not create strategy.', error);
+  }
+
+  return data;
 }
 
 export async function listTags(): Promise<TagRow[]> {
@@ -350,6 +508,20 @@ async function attachTagsToTrade(input: {
   }
 }
 
+async function replaceTagsForTrade(input: {
+  tags: ManualTradeTagInput[];
+  tradeId: string;
+  userId: string;
+}) {
+  const { error } = await supabase.from('trade_tags').delete().eq('trade_id', input.tradeId);
+
+  if (error) {
+    throw toTradeServiceError('Could not clear trade tags.', error);
+  }
+
+  await attachTagsToTrade(input);
+}
+
 async function findOrCreateTag(input: {
   name: string;
   type: TagType;
@@ -458,6 +630,22 @@ async function getTagsByTradeId(tradeIds: string[]) {
   return tagsByTradeId;
 }
 
+async function getStrategiesById(strategyIds: string[]) {
+  const uniqueStrategyIds = Array.from(new Set(strategyIds));
+
+  if (uniqueStrategyIds.length === 0) {
+    return new Map<string, Pick<StrategyRow, 'id' | 'name'>>();
+  }
+
+  const { data, error } = await supabase.from('strategies').select('id, name').in('id', uniqueStrategyIds);
+
+  if (error) {
+    throw toTradeServiceError('Could not load strategies.', error);
+  }
+
+  return new Map(data.map((strategy) => [strategy.id, strategy]));
+}
+
 function normalizeTags(tags: ManualTradeTagInput[]) {
   const seen = new Set<string>();
   const normalizedTags: ManualTradeTagInput[] = [];
@@ -532,6 +720,7 @@ async function getOrCreateDefaultAccount(userId: string): Promise<AccountRow> {
     .select('*')
     .eq('user_id', userId)
     .eq('is_archived', false)
+    .eq('is_main', true)
     .order('created_at', { ascending: true })
     .limit(1)
     .maybeSingle();
@@ -544,9 +733,39 @@ async function getOrCreateDefaultAccount(userId: string): Promise<AccountRow> {
     return existing;
   }
 
+  const { data: fallback, error: fallbackError } = await supabase
+    .from('accounts')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('is_archived', false)
+    .order('created_at', { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (fallbackError) {
+    throw toTradeServiceError('Could not check trading account.', fallbackError);
+  }
+
+  if (fallback) {
+    const { data: promoted, error: promoteError } = await supabase
+      .from('accounts')
+      .update({ is_main: true })
+      .eq('id', fallback.id)
+      .eq('user_id', userId)
+      .select()
+      .single();
+
+    if (promoteError) {
+      throw toTradeServiceError('Could not mark main trading account.', promoteError);
+    }
+
+    return promoted;
+  }
+
   const { data: created, error: insertError } = await supabase
     .from('accounts')
     .insert({
+      is_main: true,
       name: 'Manual Trading',
       user_id: userId
     })
@@ -579,6 +798,45 @@ async function requireOwnedAccount(accountId: string, userId: string): Promise<A
   return data;
 }
 
+async function requireOwnedStrategy(strategyId: string, userId: string): Promise<StrategyRow> {
+  const { data, error } = await supabase
+    .from('strategies')
+    .select('*')
+    .eq('id', strategyId)
+    .eq('user_id', userId)
+    .eq('is_archived', false)
+    .maybeSingle();
+
+  if (error) {
+    throw toTradeServiceError('Could not check strategy.', error);
+  }
+
+  if (!data) {
+    throw new TradeServiceError('Selected strategy was not found.');
+  }
+
+  return data;
+}
+
+async function requireOwnedTrade(tradeId: string, userId: string): Promise<TradeRow> {
+  const { data, error } = await supabase
+    .from('trades')
+    .select('*')
+    .eq('id', tradeId)
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (error) {
+    throw toTradeServiceError('Could not check trade.', error);
+  }
+
+  if (!data) {
+    throw new TradeServiceError('Trade was not found.');
+  }
+
+  return data;
+}
+
 async function requireUserId(): Promise<string> {
   const { data, error } = await supabase.auth.getUser();
 
@@ -596,6 +854,10 @@ async function requireUserId(): Promise<string> {
 function normalizeOptionalText(value: string | null | undefined) {
   const trimmed = value?.trim();
   return trimmed ? trimmed : null;
+}
+
+function normalizeRuleList(rules: string[] | null | undefined) {
+  return Array.from(new Set((rules ?? []).map((rule) => rule.trim()).filter(Boolean)));
 }
 
 function toTradeServiceError(message: string, error: { message: string }) {

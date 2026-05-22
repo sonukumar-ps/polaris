@@ -14,19 +14,41 @@ import {
   useAppTheme
 } from '@/lib/ui';
 import { supabase } from '@/lib/supabase';
-import { buildEquityCurve, calculateDashboardMetrics, listTradeSummaries } from '@/lib/trades';
-import type { EquityCurvePoint, TradeSummary } from '@/lib/trades';
+import {
+  buildEquityCurve,
+  calculateDashboardMetrics,
+  calculateStrategyPerformance,
+  generateInsightCoach,
+  listAccounts,
+  listTradeSummaries
+} from '@/lib/trades';
+import type {
+  EquityCurvePoint,
+  Insight,
+  InsightMetric,
+  StrategyPerformance,
+  TradeSummary,
+  TradingAccount
+} from '@/lib/trades';
 
 const NEW_TRADE_ROUTE = '/trades/new' as Href;
 const TRADES_ROUTE = '/trades' as Href;
 
 export default function HomeScreen() {
   const theme = useAppTheme();
+  const [accounts, setAccounts] = useState<TradingAccount[]>([]);
+  const [selectedAccountIds, setSelectedAccountIds] = useState<string[]>([]);
   const [trades, setTrades] = useState<TradeSummary[]>([]);
   const [dashboardError, setDashboardError] = useState<string | null>(null);
   const [isLoadingDashboard, setIsLoadingDashboard] = useState(true);
+  const selectedAccounts = useMemo(
+    () => accounts.filter((account) => selectedAccountIds.includes(account.id)),
+    [accounts, selectedAccountIds]
+  );
   const dashboardMetrics = useMemo(() => calculateDashboardMetrics(trades), [trades]);
   const equityCurve = useMemo(() => buildEquityCurve(trades), [trades]);
+  const insight = useMemo(() => generateInsightCoach(trades), [trades]);
+  const strategyPerformance = useMemo(() => calculateStrategyPerformance(trades), [trades]);
   const recentTrades = trades.slice(0, 5);
   const metrics = [
     {
@@ -42,12 +64,53 @@ export default function HomeScreen() {
   useEffect(() => {
     let isActive = true;
 
-    async function loadDashboard() {
+    async function loadAccounts() {
       setDashboardError(null);
       setIsLoadingDashboard(true);
 
       try {
-        const loadedTrades = await listTradeSummaries({ limit: 500 });
+        const loadedAccounts = await listAccounts();
+        const defaultAccount = loadedAccounts.find((account) => account.is_main) ?? loadedAccounts[0];
+
+        if (isActive) {
+          setAccounts(loadedAccounts);
+          setSelectedAccountIds(defaultAccount ? [defaultAccount.id] : []);
+        }
+      } catch (error) {
+        if (isActive) {
+          setDashboardError(error instanceof Error ? error.message : 'Could not load trading accounts.');
+        }
+      } finally {
+        if (isActive) {
+          setIsLoadingDashboard(false);
+        }
+      }
+    }
+
+    void loadAccounts();
+
+    return () => {
+      isActive = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let isActive = true;
+
+    async function loadDashboard() {
+      if (selectedAccountIds.length === 0) {
+        setTrades([]);
+        return;
+      }
+
+      setDashboardError(null);
+      setIsLoadingDashboard(true);
+
+      try {
+        const loadedTrades = await listTradeSummaries({
+          accountIds: selectedAccountIds,
+          limit: 500
+        });
 
         if (isActive) {
           setTrades(loadedTrades);
@@ -68,10 +131,20 @@ export default function HomeScreen() {
     return () => {
       isActive = false;
     };
-  }, []);
+  }, [selectedAccountIds]);
 
   async function handleSignOut() {
     await supabase.auth.signOut();
+  }
+
+  function toggleAccount(accountId: string) {
+    setSelectedAccountIds((current) => {
+      if (current.includes(accountId)) {
+        return current.length === 1 ? current : current.filter((selectedId) => selectedId !== accountId);
+      }
+
+      return [...current, accountId];
+    });
   }
 
   return (
@@ -83,6 +156,12 @@ export default function HomeScreen() {
           title="Trade journal"
         />
         <View style={styles.actions}>
+          <AccountDropdown
+            accounts={accounts}
+            onToggleAccount={toggleAccount}
+            selectedAccountIds={selectedAccountIds}
+            selectedAccounts={selectedAccounts}
+          />
           <SecondaryLinkButton href={TRADES_ROUTE}>View trades</SecondaryLinkButton>
           <PrimaryLinkButton href={NEW_TRADE_ROUTE}>Add trade</PrimaryLinkButton>
           <Pressable
@@ -130,6 +209,10 @@ export default function HomeScreen() {
           </Card>
         ))}
       </View>
+
+      <InsightCoachCard insight={insight} isLoading={isLoadingDashboard} />
+
+      <StrategyPulseCard isLoading={isLoadingDashboard} strategies={strategyPerformance} />
 
       <View style={styles.dashboardGrid}>
         <Card style={styles.chartCard}>
@@ -206,6 +289,259 @@ export default function HomeScreen() {
         </Card>
       </View>
     </AppShell>
+  );
+}
+
+function AccountDropdown({
+  accounts,
+  onToggleAccount,
+  selectedAccountIds,
+  selectedAccounts
+}: {
+  accounts: TradingAccount[];
+  onToggleAccount: (accountId: string) => void;
+  selectedAccountIds: string[];
+  selectedAccounts: TradingAccount[];
+}) {
+  const theme = useAppTheme();
+  const [isOpen, setIsOpen] = useState(false);
+  const selectedLabel =
+    selectedAccounts.length === 0
+      ? 'Accounts'
+      : selectedAccounts.length === 1
+        ? selectedAccounts[0].name
+        : `${selectedAccounts.length} accounts`;
+
+  return (
+    <View style={styles.accountDropdown}>
+      <Pressable
+        onPress={() => setIsOpen((current) => !current)}
+        style={({ pressed }) => [
+          styles.accountDropdownButton,
+          { backgroundColor: theme.card, borderColor: isOpen ? theme.accent : theme.border },
+          pressed && styles.pressed
+        ]}
+      >
+        <View style={styles.accountDropdownCopy}>
+          <Text style={[styles.accountDropdownLabel, { color: theme.muted }]}>Accounts</Text>
+          <Text style={[styles.accountDropdownValue, { color: theme.text }]}>{selectedLabel}</Text>
+        </View>
+        <Text style={[styles.accountDropdownChevron, { color: theme.muted }]}>{isOpen ? '^' : 'v'}</Text>
+      </Pressable>
+
+      {isOpen ? (
+        <Card style={styles.accountDropdownPanel}>
+          <Text style={[styles.accountDropdownPanelTitle, { color: theme.text }]}>Dashboard stats</Text>
+          <Text style={[styles.accountDropdownPanelMeta, { color: theme.muted }]}>Select one or combine accounts.</Text>
+          <View style={styles.accountOptions}>
+            {accounts.map((account) => {
+              const isSelected = selectedAccountIds.includes(account.id);
+
+              return (
+                <Pressable
+                  key={account.id}
+                  onPress={() => onToggleAccount(account.id)}
+                  style={({ pressed }) => [
+                    styles.accountOption,
+                    {
+                      backgroundColor: isSelected ? theme.accent : theme.mutedSurface,
+                      borderColor: isSelected ? theme.accent : theme.border
+                    },
+                    pressed && styles.pressed
+                  ]}
+                >
+                  <View style={styles.accountDropdownCopy}>
+                    <Text style={[styles.accountOptionName, { color: isSelected ? '#FFFFFF' : theme.text }]}>
+                      {account.name}
+                    </Text>
+                    {account.is_main ? (
+                      <Text style={[styles.accountOptionMeta, { color: isSelected ? '#EAF3FF' : theme.muted }]}>
+                        Main account
+                      </Text>
+                    ) : null}
+                  </View>
+                  <Text style={[styles.accountOptionCheck, { color: isSelected ? '#FFFFFF' : theme.muted }]}>
+                    {isSelected ? 'Selected' : 'Select'}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </Card>
+      ) : null}
+    </View>
+  );
+}
+
+function InsightCoachCard({ insight, isLoading }: { insight: Insight; isLoading: boolean }) {
+  const theme = useAppTheme();
+  const relatedTradesRoute = {
+    pathname: '/trades',
+    params: {
+      focus: insight.title,
+      sourceTradeIds: insight.sourceTradeIds.join(',')
+    }
+  } as Href;
+
+  return (
+    <Card style={styles.insightCard}>
+      <View style={styles.cardHeader}>
+        <View>
+          <Text style={[styles.cardTitle, { color: theme.text }]}>This week&apos;s focus</Text>
+          <Text style={[styles.cardMeta, { color: theme.muted }]}>One review cue from your journal</Text>
+        </View>
+        {insight.sourceTradeIds.length > 0 ? (
+          <SecondaryLinkButton href={relatedTradesRoute}>{insight.action.label}</SecondaryLinkButton>
+        ) : null}
+      </View>
+      {isLoading ? (
+        <View style={[styles.insightLoading, { backgroundColor: theme.mutedSurface }]}>
+          <ActivityIndicator color={theme.accent} />
+          <Text style={[styles.stateText, { color: theme.muted }]}>Reading your journal...</Text>
+        </View>
+      ) : (
+        <>
+          <View style={styles.insightBody}>
+            <View
+              style={[
+                styles.insightIndicator,
+                {
+                  backgroundColor:
+                    insight.severity === 'positive'
+                      ? theme.positive
+                      : insight.severity === 'warning'
+                        ? theme.danger
+                        : theme.accent
+                }
+              ]}
+            />
+            <View style={styles.insightCopy}>
+              <Text style={[styles.insightTitle, { color: theme.text }]}>{insight.title}</Text>
+              <Text style={[styles.insightReason, { color: theme.muted }]}>{insight.reason}</Text>
+            </View>
+          </View>
+          <View style={styles.insightMetrics}>
+            {insight.metrics.map((metric) => (
+              <InsightMetricView key={metric.label} metric={metric} />
+            ))}
+          </View>
+        </>
+      )}
+    </Card>
+  );
+}
+
+function InsightMetricView({ metric }: { metric: InsightMetric }) {
+  const theme = useAppTheme();
+
+  return (
+    <View style={[styles.insightMetric, { backgroundColor: theme.mutedSurface }]}>
+      <Text
+        style={[
+          styles.insightMetricValue,
+          {
+            color:
+              metric.tone === 'positive' ? theme.positive : metric.tone === 'warning' ? theme.danger : theme.text
+          }
+        ]}
+      >
+        {metric.value}
+      </Text>
+      <Text style={[styles.insightMetricLabel, { color: theme.muted }]}>{metric.label}</Text>
+    </View>
+  );
+}
+
+function StrategyPulseCard({
+  isLoading,
+  strategies
+}: {
+  isLoading: boolean;
+  strategies: StrategyPerformance[];
+}) {
+  const theme = useAppTheme();
+  const bestStrategy = strategies[0] ?? null;
+  const reviewStrategy = [...strategies].reverse().find((strategy) => strategy.netPnl < 0) ?? null;
+  const visibleStrategies = strategies.slice(0, 3);
+
+  return (
+    <Card style={styles.strategyCard}>
+      <View style={styles.cardHeader}>
+        <View>
+          <Text style={[styles.cardTitle, { color: theme.text }]}>Strategy pulse</Text>
+          <Text style={[styles.cardMeta, { color: theme.muted }]}>Closed-trade performance for selected accounts</Text>
+        </View>
+        <SecondaryLinkButton href={TRADES_ROUTE}>Review trades</SecondaryLinkButton>
+      </View>
+      {isLoading ? (
+        <View style={[styles.strategyLoading, { backgroundColor: theme.mutedSurface }]}>
+          <ActivityIndicator color={theme.accent} />
+          <Text style={[styles.stateText, { color: theme.muted }]}>Reading strategies...</Text>
+        </View>
+      ) : strategies.length === 0 ? (
+        <EmptyState
+          body="Closed trades with a selected strategy will show which playbooks deserve more attention."
+          title="No strategy signal yet"
+        />
+      ) : (
+        <>
+          <View style={styles.strategyHighlights}>
+            <StrategyHighlight
+              label="Working best"
+              strategy={bestStrategy}
+              tone={bestStrategy && bestStrategy.netPnl >= 0 ? 'positive' : 'neutral'}
+            />
+            <StrategyHighlight label="Review next" strategy={reviewStrategy} tone="warning" />
+          </View>
+          <View style={styles.strategyRows}>
+            {visibleStrategies.map((strategy) => (
+              <View key={strategy.strategyId ?? strategy.name} style={styles.strategyRow}>
+                <View style={styles.strategyNameBlock}>
+                  <Text style={[styles.strategyName, { color: theme.text }]}>{strategy.name}</Text>
+                  <Text style={[styles.strategyMeta, { color: theme.muted }]}>
+                    {strategy.tradeCount} closed | {formatPercent(strategy.winRate)} win | PF{' '}
+                    {formatProfitFactor(strategy.profitFactor)}
+                  </Text>
+                </View>
+                <Text
+                  style={[
+                    styles.strategyPnl,
+                    { color: strategy.netPnl >= 0 ? theme.positive : theme.danger }
+                  ]}
+                >
+                  {formatCurrency(strategy.netPnl)}
+                </Text>
+              </View>
+            ))}
+          </View>
+        </>
+      )}
+    </Card>
+  );
+}
+
+function StrategyHighlight({
+  label,
+  strategy,
+  tone
+}: {
+  label: string;
+  strategy: StrategyPerformance | null;
+  tone: 'positive' | 'warning' | 'neutral';
+}) {
+  const theme = useAppTheme();
+  const toneColor = tone === 'positive' ? theme.positive : tone === 'warning' ? theme.danger : theme.text;
+
+  return (
+    <View style={[styles.strategyHighlight, { backgroundColor: theme.mutedSurface }]}>
+      <Text style={[styles.strategyHighlightLabel, { color: theme.muted }]}>{label}</Text>
+      <Text style={[styles.strategyHighlightName, { color: strategy ? theme.text : theme.muted }]}>
+        {strategy?.name ?? 'Nothing urgent'}
+      </Text>
+      <Text style={[styles.strategyHighlightValue, { color: strategy ? toneColor : theme.muted }]}>
+        {strategy ? `${formatCurrency(strategy.netPnl)} avg ${formatCurrency(strategy.averagePnl)}` : 'Keep collecting data'}
+      </Text>
+    </View>
   );
 }
 
@@ -300,12 +636,15 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 16,
     alignItems: 'flex-start',
-    justifyContent: 'space-between'
+    justifyContent: 'space-between',
+    zIndex: 10
   },
   actions: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10
+    gap: 10,
+    alignItems: 'center',
+    zIndex: 20
   },
   signOutButton: {
     minHeight: 44,
@@ -340,6 +679,199 @@ const styles = StyleSheet.create({
   },
   metricLabel: {
     fontSize: 13,
+    fontWeight: '800'
+  },
+  accountDropdown: {
+    position: 'relative',
+    zIndex: 30
+  },
+  accountDropdownButton: {
+    minHeight: 44,
+    flexDirection: 'row',
+    gap: 10,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    minWidth: 176,
+    borderRadius: 8,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 6
+  },
+  accountDropdownCopy: {
+    flex: 1,
+    gap: 2
+  },
+  accountDropdownLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    textTransform: 'uppercase'
+  },
+  accountDropdownValue: {
+    fontSize: 14,
+    fontWeight: '800'
+  },
+  accountDropdownChevron: {
+    fontSize: 14,
+    fontWeight: '800'
+  },
+  accountDropdownPanel: {
+    position: 'absolute',
+    top: 52,
+    right: 0,
+    width: 320,
+    gap: 10,
+    zIndex: 40
+  },
+  accountDropdownPanelTitle: {
+    fontSize: 17,
+    fontWeight: '800'
+  },
+  accountDropdownPanelMeta: {
+    fontSize: 12,
+    fontWeight: '700',
+    marginTop: -6
+  },
+  accountOptions: {
+    gap: 8
+  },
+  accountOption: {
+    minHeight: 52,
+    flexDirection: 'row',
+    gap: 10,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderRadius: 8,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 10
+  },
+  accountOptionName: {
+    fontSize: 14,
+    fontWeight: '800'
+  },
+  accountOptionMeta: {
+    fontSize: 12,
+    fontWeight: '700'
+  },
+  accountOptionCheck: {
+    fontSize: 12,
+    fontWeight: '800'
+  },
+  insightCard: {
+    gap: 18
+  },
+  insightLoading: {
+    minHeight: 126,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    borderRadius: 8,
+    padding: 18
+  },
+  insightBody: {
+    flexDirection: 'row',
+    gap: 14,
+    alignItems: 'flex-start'
+  },
+  insightIndicator: {
+    width: 6,
+    alignSelf: 'stretch',
+    borderRadius: 99
+  },
+  insightCopy: {
+    flex: 1,
+    gap: 8
+  },
+  insightTitle: {
+    fontSize: 24,
+    fontWeight: '800',
+    lineHeight: 30
+  },
+  insightReason: {
+    maxWidth: 760,
+    fontSize: 15,
+    lineHeight: 22
+  },
+  insightMetrics: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10
+  },
+  insightMetric: {
+    minWidth: 150,
+    flex: 1,
+    gap: 5,
+    borderRadius: 8,
+    padding: 12
+  },
+  insightMetricValue: {
+    fontSize: 20,
+    fontWeight: '800'
+  },
+  insightMetricLabel: {
+    fontSize: 12,
+    fontWeight: '800'
+  },
+  strategyCard: {
+    gap: 18
+  },
+  strategyLoading: {
+    minHeight: 116,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    borderRadius: 8,
+    padding: 18
+  },
+  strategyHighlights: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10
+  },
+  strategyHighlight: {
+    minWidth: 220,
+    flex: 1,
+    gap: 6,
+    borderRadius: 8,
+    padding: 14
+  },
+  strategyHighlightLabel: {
+    fontSize: 12,
+    fontWeight: '800',
+    textTransform: 'uppercase'
+  },
+  strategyHighlightName: {
+    fontSize: 18,
+    fontWeight: '800'
+  },
+  strategyHighlightValue: {
+    fontSize: 13,
+    fontWeight: '800'
+  },
+  strategyRows: {
+    gap: 4
+  },
+  strategyRow: {
+    minHeight: 58,
+    flexDirection: 'row',
+    gap: 12,
+    alignItems: 'center',
+    justifyContent: 'space-between'
+  },
+  strategyNameBlock: {
+    flex: 1,
+    gap: 4
+  },
+  strategyName: {
+    fontSize: 16,
+    fontWeight: '800'
+  },
+  strategyMeta: {
+    fontSize: 12,
+    fontWeight: '700'
+  },
+  strategyPnl: {
+    fontSize: 15,
     fontWeight: '800'
   },
   dashboardGrid: {

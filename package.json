@@ -7,7 +7,9 @@
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
+    "seed:demo": "node scripts/seed_demo_data.mjs",
     "web": "expo start --web",
+    "test": "node tests/insights.test.cjs",
     "typecheck": "tsc --noEmit",
     "lint": "eslint app lib --max-warnings=0"
   },
