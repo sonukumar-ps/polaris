@@ -156,6 +156,12 @@ export default function HomeScreen() {
           title="Trade journal"
         />
         <View style={styles.actions}>
+          <AccountDropdown
+            accounts={accounts}
+            onToggleAccount={toggleAccount}
+            selectedAccountIds={selectedAccountIds}
+            selectedAccounts={selectedAccounts}
+          />
           <SecondaryLinkButton href={TRADES_ROUTE}>View trades</SecondaryLinkButton>
           <PrimaryLinkButton href={NEW_TRADE_ROUTE}>Add trade</PrimaryLinkButton>
           <Pressable
@@ -176,13 +182,6 @@ export default function HomeScreen() {
           <Text style={[styles.errorText, { color: theme.danger }]}>{dashboardError}</Text>
         </Card>
       ) : null}
-
-      <AccountSelector
-        accounts={accounts}
-        selectedAccountIds={selectedAccountIds}
-        selectedAccounts={selectedAccounts}
-        onToggleAccount={toggleAccount}
-      />
 
       <View style={styles.metricsGrid}>
         {metrics.map((metric) => (
@@ -293,7 +292,7 @@ export default function HomeScreen() {
   );
 }
 
-function AccountSelector({
+function AccountDropdown({
   accounts,
   onToggleAccount,
   selectedAccountIds,
@@ -305,47 +304,72 @@ function AccountSelector({
   selectedAccounts: TradingAccount[];
 }) {
   const theme = useAppTheme();
+  const [isOpen, setIsOpen] = useState(false);
   const selectedLabel =
     selectedAccounts.length === 0
-      ? 'No account selected'
+      ? 'Accounts'
       : selectedAccounts.length === 1
         ? selectedAccounts[0].name
-        : `${selectedAccounts.length} accounts combined`;
+        : `${selectedAccounts.length} accounts`;
 
   return (
-    <Card style={styles.accountCard}>
-      <View>
-        <Text style={[styles.cardTitle, { color: theme.text }]}>Dashboard account</Text>
-        <Text style={[styles.cardMeta, { color: theme.muted }]}>Showing stats for {selectedLabel}</Text>
-      </View>
-      <View style={styles.accountChips}>
-        {accounts.map((account) => {
-          const isSelected = selectedAccountIds.includes(account.id);
+    <View style={styles.accountDropdown}>
+      <Pressable
+        onPress={() => setIsOpen((current) => !current)}
+        style={({ pressed }) => [
+          styles.accountDropdownButton,
+          { backgroundColor: theme.card, borderColor: isOpen ? theme.accent : theme.border },
+          pressed && styles.pressed
+        ]}
+      >
+        <View style={styles.accountDropdownCopy}>
+          <Text style={[styles.accountDropdownLabel, { color: theme.muted }]}>Accounts</Text>
+          <Text style={[styles.accountDropdownValue, { color: theme.text }]}>{selectedLabel}</Text>
+        </View>
+        <Text style={[styles.accountDropdownChevron, { color: theme.muted }]}>{isOpen ? '^' : 'v'}</Text>
+      </Pressable>
 
-          return (
-            <Pressable
-              key={account.id}
-              onPress={() => onToggleAccount(account.id)}
-              style={({ pressed }) => [
-                styles.accountChip,
-                {
-                  backgroundColor: isSelected ? theme.accent : theme.mutedSurface,
-                  borderColor: isSelected ? theme.accent : theme.border
-                },
-                pressed && styles.pressed
-              ]}
-            >
-              <Text style={[styles.accountChipText, { color: isSelected ? '#FFFFFF' : theme.text }]}>
-                {account.name}
-              </Text>
-              {account.is_main ? (
-                <Text style={[styles.accountChipMeta, { color: isSelected ? '#EAF3FF' : theme.muted }]}>Main</Text>
-              ) : null}
-            </Pressable>
-          );
-        })}
-      </View>
-    </Card>
+      {isOpen ? (
+        <Card style={styles.accountDropdownPanel}>
+          <Text style={[styles.accountDropdownPanelTitle, { color: theme.text }]}>Dashboard stats</Text>
+          <Text style={[styles.accountDropdownPanelMeta, { color: theme.muted }]}>Select one or combine accounts.</Text>
+          <View style={styles.accountOptions}>
+            {accounts.map((account) => {
+              const isSelected = selectedAccountIds.includes(account.id);
+
+              return (
+                <Pressable
+                  key={account.id}
+                  onPress={() => onToggleAccount(account.id)}
+                  style={({ pressed }) => [
+                    styles.accountOption,
+                    {
+                      backgroundColor: isSelected ? theme.accent : theme.mutedSurface,
+                      borderColor: isSelected ? theme.accent : theme.border
+                    },
+                    pressed && styles.pressed
+                  ]}
+                >
+                  <View style={styles.accountDropdownCopy}>
+                    <Text style={[styles.accountOptionName, { color: isSelected ? '#FFFFFF' : theme.text }]}>
+                      {account.name}
+                    </Text>
+                    {account.is_main ? (
+                      <Text style={[styles.accountOptionMeta, { color: isSelected ? '#EAF3FF' : theme.muted }]}>
+                        Main account
+                      </Text>
+                    ) : null}
+                  </View>
+                  <Text style={[styles.accountOptionCheck, { color: isSelected ? '#FFFFFF' : theme.muted }]}>
+                    {isSelected ? 'Selected' : 'Select'}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </Card>
+      ) : null}
+    </View>
   );
 }
 
@@ -612,12 +636,15 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 16,
     alignItems: 'flex-start',
-    justifyContent: 'space-between'
+    justifyContent: 'space-between',
+    zIndex: 10
   },
   actions: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10
+    gap: 10,
+    alignItems: 'center',
+    zIndex: 20
   },
   signOutButton: {
     minHeight: 44,
@@ -654,31 +681,81 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '800'
   },
-  accountCard: {
-    gap: 14
+  accountDropdown: {
+    position: 'relative',
+    zIndex: 30
   },
-  accountChips: {
+  accountDropdownButton: {
+    minHeight: 44,
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8
-  },
-  accountChip: {
-    minHeight: 42,
-    flexDirection: 'row',
-    gap: 8,
+    gap: 10,
     alignItems: 'center',
+    justifyContent: 'space-between',
+    minWidth: 176,
     borderRadius: 8,
     borderWidth: 1,
-    paddingHorizontal: 12
+    paddingHorizontal: 12,
+    paddingVertical: 6
   },
-  accountChipText: {
+  accountDropdownCopy: {
+    flex: 1,
+    gap: 2
+  },
+  accountDropdownLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    textTransform: 'uppercase'
+  },
+  accountDropdownValue: {
     fontSize: 14,
     fontWeight: '800'
   },
-  accountChipMeta: {
-    fontSize: 11,
-    fontWeight: '800',
-    textTransform: 'uppercase'
+  accountDropdownChevron: {
+    fontSize: 14,
+    fontWeight: '800'
+  },
+  accountDropdownPanel: {
+    position: 'absolute',
+    top: 52,
+    right: 0,
+    width: 320,
+    gap: 10,
+    zIndex: 40
+  },
+  accountDropdownPanelTitle: {
+    fontSize: 17,
+    fontWeight: '800'
+  },
+  accountDropdownPanelMeta: {
+    fontSize: 12,
+    fontWeight: '700',
+    marginTop: -6
+  },
+  accountOptions: {
+    gap: 8
+  },
+  accountOption: {
+    minHeight: 52,
+    flexDirection: 'row',
+    gap: 10,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderRadius: 8,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 10
+  },
+  accountOptionName: {
+    fontSize: 14,
+    fontWeight: '800'
+  },
+  accountOptionMeta: {
+    fontSize: 12,
+    fontWeight: '700'
+  },
+  accountOptionCheck: {
+    fontSize: 12,
+    fontWeight: '800'
   },
   insightCard: {
     gap: 18
