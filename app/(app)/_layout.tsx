@@ -3,6 +3,7 @@ import type { Href } from 'expo-router';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
 import { useAuth } from '@/lib/auth/session';
+import { AccountScopeProvider } from '@/lib/trades';
 
 const SIGN_IN_ROUTE = '/sign-in' as Href;
 
@@ -23,14 +24,14 @@ export default function ProtectedLayout() {
   }
 
   return (
-    <>
+    <AccountScopeProvider>
       {error ? (
         <View style={styles.banner}>
           <Text style={styles.bannerText}>{error}</Text>
         </View>
       ) : null}
       <Stack screenOptions={{ headerShown: false }} />
-    </>
+    </AccountScopeProvider>
   );
 }
 

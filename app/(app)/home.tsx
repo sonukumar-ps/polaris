@@ -19,16 +19,15 @@ import {
   calculateDashboardMetrics,
   calculateStrategyPerformance,
   generateInsightCoach,
-  listAccounts,
-  listTradeSummaries
+  listTradeSummaries,
+  useAccountScope
 } from '@/lib/trades';
 import type {
   EquityCurvePoint,
   Insight,
   InsightMetric,
   StrategyPerformance,
-  TradeSummary,
-  TradingAccount
+  TradeSummary
 } from '@/lib/trades';
 
 const NEW_TRADE_ROUTE = '/trades/new' as Href;
@@ -36,20 +35,20 @@ const TRADES_ROUTE = '/trades' as Href;
 
 export default function HomeScreen() {
   const theme = useAppTheme();
-  const [accounts, setAccounts] = useState<TradingAccount[]>([]);
-  const [selectedAccountIds, setSelectedAccountIds] = useState<string[]>([]);
+  const {
+    error: accountError,
+    isLoading: isLoadingAccounts,
+    selectedAccountIds
+  } = useAccountScope();
   const [trades, setTrades] = useState<TradeSummary[]>([]);
   const [dashboardError, setDashboardError] = useState<string | null>(null);
   const [isLoadingDashboard, setIsLoadingDashboard] = useState(true);
-  const selectedAccounts = useMemo(
-    () => accounts.filter((account) => selectedAccountIds.includes(account.id)),
-    [accounts, selectedAccountIds]
-  );
   const dashboardMetrics = useMemo(() => calculateDashboardMetrics(trades), [trades]);
   const equityCurve = useMemo(() => buildEquityCurve(trades), [trades]);
   const insight = useMemo(() => generateInsightCoach(trades), [trades]);
   const strategyPerformance = useMemo(() => calculateStrategyPerformance(trades), [trades]);
   const recentTrades = trades.slice(0, 5);
+  const isLoadingView = isLoadingAccounts || isLoadingDashboard;
   const metrics = [
     {
       label: 'Total P&L',
@@ -64,42 +63,10 @@ export default function HomeScreen() {
   useEffect(() => {
     let isActive = true;
 
-    async function loadAccounts() {
-      setDashboardError(null);
-      setIsLoadingDashboard(true);
-
-      try {
-        const loadedAccounts = await listAccounts();
-        const defaultAccount = loadedAccounts.find((account) => account.is_main) ?? loadedAccounts[0];
-
-        if (isActive) {
-          setAccounts(loadedAccounts);
-          setSelectedAccountIds(defaultAccount ? [defaultAccount.id] : []);
-        }
-      } catch (error) {
-        if (isActive) {
-          setDashboardError(error instanceof Error ? error.message : 'Could not load trading accounts.');
-        }
-      } finally {
-        if (isActive) {
-          setIsLoadingDashboard(false);
-        }
-      }
-    }
-
-    void loadAccounts();
-
-    return () => {
-      isActive = false;
-    };
-  }, []);
-
-  useEffect(() => {
-    let isActive = true;
-
     async function loadDashboard() {
       if (selectedAccountIds.length === 0) {
         setTrades([]);
+        setIsLoadingDashboard(isLoadingAccounts);
         return;
       }
 
@@ -131,20 +98,10 @@ export default function HomeScreen() {
     return () => {
       isActive = false;
     };
-  }, [selectedAccountIds]);
+  }, [isLoadingAccounts, selectedAccountIds]);
 
   async function handleSignOut() {
     await supabase.auth.signOut();
-  }
-
-  function toggleAccount(accountId: string) {
-    setSelectedAccountIds((current) => {
-      if (current.includes(accountId)) {
-        return current.length === 1 ? current : current.filter((selectedId) => selectedId !== accountId);
-      }
-
-      return [...current, accountId];
-    });
   }
 
   return (
@@ -156,12 +113,6 @@ export default function HomeScreen() {
           title="Trade journal"
         />
         <View style={styles.actions}>
-          <AccountDropdown
-            accounts={accounts}
-            onToggleAccount={toggleAccount}
-            selectedAccountIds={selectedAccountIds}
-            selectedAccounts={selectedAccounts}
-          />
           <SecondaryLinkButton href={TRADES_ROUTE}>View trades</SecondaryLinkButton>
           <PrimaryLinkButton href={NEW_TRADE_ROUTE}>Add trade</PrimaryLinkButton>
           <Pressable
@@ -177,16 +128,16 @@ export default function HomeScreen() {
         </View>
       </View>
 
-      {dashboardError ? (
+      {accountError || dashboardError ? (
         <Card style={{ borderColor: theme.danger }}>
-          <Text style={[styles.errorText, { color: theme.danger }]}>{dashboardError}</Text>
+          <Text style={[styles.errorText, { color: theme.danger }]}>{accountError ?? dashboardError}</Text>
         </Card>
       ) : null}
 
       <View style={styles.metricsGrid}>
         {metrics.map((metric) => (
           <Card key={metric.label} style={styles.metricCard}>
-            {isLoadingDashboard ? (
+            {isLoadingView ? (
               <ActivityIndicator color={theme.accent} />
             ) : (
               <Text
@@ -210,9 +161,9 @@ export default function HomeScreen() {
         ))}
       </View>
 
-      <InsightCoachCard insight={insight} isLoading={isLoadingDashboard} />
+      <InsightCoachCard insight={insight} isLoading={isLoadingView} />
 
-      <StrategyPulseCard isLoading={isLoadingDashboard} strategies={strategyPerformance} />
+      <StrategyPulseCard isLoading={isLoadingView} strategies={strategyPerformance} />
 
       <View style={styles.dashboardGrid}>
         <Card style={styles.chartCard}>
@@ -226,7 +177,7 @@ export default function HomeScreen() {
               </Text>
             </View>
           </View>
-          {isLoadingDashboard ? (
+          {isLoadingView ? (
             <View style={[styles.chartState, { backgroundColor: theme.mutedSurface }]}>
               <ActivityIndicator color={theme.accent} />
               <Text style={[styles.stateText, { color: theme.muted }]}>Loading curve...</Text>
@@ -249,7 +200,7 @@ export default function HomeScreen() {
             </View>
             <SecondaryLinkButton href={TRADES_ROUTE}>All</SecondaryLinkButton>
           </View>
-          {isLoadingDashboard ? (
+          {isLoadingView ? (
             <ActivityIndicator color={theme.accent} />
           ) : recentTrades.length === 0 ? (
             <EmptyState body="Your newest trades will appear here once saved." title="No trades" />
@@ -289,87 +240,6 @@ export default function HomeScreen() {
         </Card>
       </View>
     </AppShell>
-  );
-}
-
-function AccountDropdown({
-  accounts,
-  onToggleAccount,
-  selectedAccountIds,
-  selectedAccounts
-}: {
-  accounts: TradingAccount[];
-  onToggleAccount: (accountId: string) => void;
-  selectedAccountIds: string[];
-  selectedAccounts: TradingAccount[];
-}) {
-  const theme = useAppTheme();
-  const [isOpen, setIsOpen] = useState(false);
-  const selectedLabel =
-    selectedAccounts.length === 0
-      ? 'Accounts'
-      : selectedAccounts.length === 1
-        ? selectedAccounts[0].name
-        : `${selectedAccounts.length} accounts`;
-
-  return (
-    <View style={styles.accountDropdown}>
-      <Pressable
-        onPress={() => setIsOpen((current) => !current)}
-        style={({ pressed }) => [
-          styles.accountDropdownButton,
-          { backgroundColor: theme.card, borderColor: isOpen ? theme.accent : theme.border },
-          pressed && styles.pressed
-        ]}
-      >
-        <View style={styles.accountDropdownCopy}>
-          <Text style={[styles.accountDropdownLabel, { color: theme.muted }]}>Accounts</Text>
-          <Text style={[styles.accountDropdownValue, { color: theme.text }]}>{selectedLabel}</Text>
-        </View>
-        <Text style={[styles.accountDropdownChevron, { color: theme.muted }]}>{isOpen ? '^' : 'v'}</Text>
-      </Pressable>
-
-      {isOpen ? (
-        <Card style={styles.accountDropdownPanel}>
-          <Text style={[styles.accountDropdownPanelTitle, { color: theme.text }]}>Dashboard stats</Text>
-          <Text style={[styles.accountDropdownPanelMeta, { color: theme.muted }]}>Select one or combine accounts.</Text>
-          <View style={styles.accountOptions}>
-            {accounts.map((account) => {
-              const isSelected = selectedAccountIds.includes(account.id);
-
-              return (
-                <Pressable
-                  key={account.id}
-                  onPress={() => onToggleAccount(account.id)}
-                  style={({ pressed }) => [
-                    styles.accountOption,
-                    {
-                      backgroundColor: isSelected ? theme.accent : theme.mutedSurface,
-                      borderColor: isSelected ? theme.accent : theme.border
-                    },
-                    pressed && styles.pressed
-                  ]}
-                >
-                  <View style={styles.accountDropdownCopy}>
-                    <Text style={[styles.accountOptionName, { color: isSelected ? '#FFFFFF' : theme.text }]}>
-                      {account.name}
-                    </Text>
-                    {account.is_main ? (
-                      <Text style={[styles.accountOptionMeta, { color: isSelected ? '#EAF3FF' : theme.muted }]}>
-                        Main account
-                      </Text>
-                    ) : null}
-                  </View>
-                  <Text style={[styles.accountOptionCheck, { color: isSelected ? '#FFFFFF' : theme.muted }]}>
-                    {isSelected ? 'Selected' : 'Select'}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
-        </Card>
-      ) : null}
-    </View>
   );
 }
 
@@ -679,82 +549,6 @@ const styles = StyleSheet.create({
   },
   metricLabel: {
     fontSize: 13,
-    fontWeight: '800'
-  },
-  accountDropdown: {
-    position: 'relative',
-    zIndex: 30
-  },
-  accountDropdownButton: {
-    minHeight: 44,
-    flexDirection: 'row',
-    gap: 10,
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    minWidth: 176,
-    borderRadius: 8,
-    borderWidth: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 6
-  },
-  accountDropdownCopy: {
-    flex: 1,
-    gap: 2
-  },
-  accountDropdownLabel: {
-    fontSize: 10,
-    fontWeight: '800',
-    textTransform: 'uppercase'
-  },
-  accountDropdownValue: {
-    fontSize: 14,
-    fontWeight: '800'
-  },
-  accountDropdownChevron: {
-    fontSize: 14,
-    fontWeight: '800'
-  },
-  accountDropdownPanel: {
-    position: 'absolute',
-    top: 52,
-    right: 0,
-    width: 320,
-    gap: 10,
-    zIndex: 40
-  },
-  accountDropdownPanelTitle: {
-    fontSize: 17,
-    fontWeight: '800'
-  },
-  accountDropdownPanelMeta: {
-    fontSize: 12,
-    fontWeight: '700',
-    marginTop: -6
-  },
-  accountOptions: {
-    gap: 8
-  },
-  accountOption: {
-    minHeight: 52,
-    flexDirection: 'row',
-    gap: 10,
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderRadius: 8,
-    borderWidth: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 10
-  },
-  accountOptionName: {
-    fontSize: 14,
-    fontWeight: '800'
-  },
-  accountOptionMeta: {
-    fontSize: 12,
-    fontWeight: '700'
-  },
-  accountOptionCheck: {
-    fontSize: 12,
     fontWeight: '800'
   },
   insightCard: {
