@@ -3,10 +3,10 @@ import type { Href } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { AppShell, PrimaryLinkButton, SectionHeading } from '@/lib/ui';
 import { listTags, listTradeSummaries } from '@/lib/trades';
 import type { JournalTag, TradeSummary } from '@/lib/trades';
 
-const HOME_ROUTE = '/home' as Href;
 const NEW_TRADE_ROUTE = '/trades/new' as Href;
 
 export default function TradesScreen() {
@@ -64,21 +64,18 @@ export default function TradesScreen() {
   );
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <View style={styles.header}>
-        <Link href={HOME_ROUTE} style={styles.backLink}>
-          Back
-        </Link>
-        <Text style={styles.eyebrow}>Trade Journal</Text>
-        <Text style={styles.title}>Saved trades</Text>
-        {focusLabel ? <Text style={styles.focusText}>Focus: {focusLabel}</Text> : null}
+    <AppShell activeRoute="trades">
+      <View style={styles.headerRow}>
+        <View style={styles.header}>
+          <SectionHeading
+            eyebrow="Trade journal"
+            subtitle="Review executions, context, and outcomes in one continuous history."
+            title="Saved trades"
+          />
+          {focusLabel ? <Text style={styles.focusText}>Focus: {focusLabel}</Text> : null}
+        </View>
+        <PrimaryLinkButton href={NEW_TRADE_ROUTE}>Log trade</PrimaryLinkButton>
       </View>
-
-      <Link href={NEW_TRADE_ROUTE} asChild>
-        <Pressable style={({ pressed }) => [styles.primaryButton, pressed && styles.buttonPressed]}>
-          <Text style={styles.primaryButtonText}>Log trade</Text>
-        </Pressable>
-      </Link>
 
       {tags.length > 0 ? (
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -171,7 +168,7 @@ export default function TradesScreen() {
           </Link>
         ))}
       </View>
-    </ScrollView>
+    </AppShell>
   );
 }
 
@@ -214,52 +211,21 @@ function getParamValue(value: string | string[] | undefined) {
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: '#F8FAFC'
-  },
-  content: {
-    gap: 18,
-    padding: 24,
-    paddingTop: 56
+  headerRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 16,
+    alignItems: 'flex-start',
+    justifyContent: 'space-between'
   },
   header: {
     gap: 8,
     maxWidth: 860
   },
-  backLink: {
-    color: '#2563EB',
-    fontSize: 14,
-    fontWeight: '700'
-  },
-  eyebrow: {
-    color: '#2563EB',
-    fontSize: 14,
-    fontWeight: '700',
-    textTransform: 'uppercase'
-  },
-  title: {
-    color: '#0F172A',
-    fontSize: 34,
-    fontWeight: '800'
-  },
   focusText: {
     color: '#475569',
     fontSize: 15,
     lineHeight: 22
-  },
-  primaryButton: {
-    alignSelf: 'flex-start',
-    minHeight: 44,
-    justifyContent: 'center',
-    borderRadius: 8,
-    backgroundColor: '#2563EB',
-    paddingHorizontal: 16
-  },
-  primaryButtonText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '700'
   },
   buttonPressed: {
     opacity: 0.76
