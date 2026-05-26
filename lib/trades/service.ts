@@ -241,6 +241,31 @@ export async function listTrades(options: ListTradesOptions = {}): Promise<Trade
   return data;
 }
 
+export async function countTrades(options: Pick<ListTradesOptions, 'accountIds'> = {}): Promise<number> {
+  const userId = await requireUserId();
+
+  if (options.accountIds && options.accountIds.length === 0) {
+    return 0;
+  }
+
+  let query = supabase
+    .from('trades')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', userId);
+
+  if (options.accountIds) {
+    query = query.in('account_id', options.accountIds);
+  }
+
+  const { count, error } = await query;
+
+  if (error) {
+    throw toTradeServiceError('Could not count trades.', error);
+  }
+
+  return count ?? 0;
+}
+
 export async function listAccounts(): Promise<AccountRow[]> {
   const userId = await requireUserId();
   await getOrCreateDefaultAccount(userId);

@@ -4,7 +4,7 @@ import { useCallback, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { AppShell, PrimaryLinkButton, SectionHeading } from '@/lib/ui';
-import { listTags, listTradeSummaries } from '@/lib/trades';
+import { countTrades, listTags, listTradeSummaries, useAccountScope } from '@/lib/trades';
 import type { JournalTag, TradeSummary } from '@/lib/trades';
 
 const NEW_TRADE_ROUTE = '/trades/new' as Href;
@@ -12,7 +12,14 @@ const NEW_TRADE_ROUTE = '/trades/new' as Href;
 export default function TradesScreen() {
   const params = useLocalSearchParams<{ focus?: string; sourceTradeIds?: string }>();
   const focusLabel = getParamValue(params.focus);
+  const {
+    error: accountError,
+    isLoading: isLoadingAccounts,
+    selectedAccountIds,
+    selectedAccounts
+  } = useAccountScope();
   const [trades, setTrades] = useState<TradeSummary[]>([]);
+  const [totalTrades, setTotalTrades] = useState<number | null>(null);
   const [tags, setTags] = useState<JournalTag[]>([]);
   const [selectedTagId, setSelectedTagId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -23,17 +30,31 @@ export default function TradesScreen() {
       let isActive = true;
 
       async function loadTrades() {
+        if (isLoadingAccounts) {
+          return;
+        }
+
+        if (selectedAccountIds.length === 0) {
+          setTrades([]);
+          setTotalTrades(0);
+          setIsLoading(false);
+          return;
+        }
+
         setIsLoading(true);
+        setTotalTrades(null);
         setError(null);
 
         try {
           const sourceTradeIds = parseSourceTradeIds(params.sourceTradeIds);
-          const [loadedTrades, loadedTags] = await Promise.all([
+          const [loadedTrades, loadedTags, loadedTotalTrades] = await Promise.all([
             listTradeSummaries({
+              accountIds: selectedAccountIds,
               limit: sourceTradeIds.length > 0 ? 500 : undefined,
               tagId: selectedTagId ?? undefined
             }),
-            listTags()
+            listTags(),
+            countTrades({ accountIds: selectedAccountIds })
           ]);
 
           if (isActive) {
@@ -43,6 +64,7 @@ export default function TradesScreen() {
                 : loadedTrades
             );
             setTags(loadedTags);
+            setTotalTrades(loadedTotalTrades);
           }
         } catch (loadError) {
           if (isActive) {
@@ -60,8 +82,11 @@ export default function TradesScreen() {
       return () => {
         isActive = false;
       };
-    }, [params.sourceTradeIds, selectedTagId])
+    }, [isLoadingAccounts, params.sourceTradeIds, selectedAccountIds, selectedTagId])
   );
+
+  const accountScopeLabel =
+    selectedAccounts.length === 1 ? selectedAccounts[0].name : `${selectedAccounts.length} selected accounts`;
 
   return (
     <AppShell activeRoute="trades">
@@ -72,6 +97,13 @@ export default function TradesScreen() {
             subtitle="Review executions, context, and outcomes in one continuous history."
             title="Saved trades"
           />
+          {!isLoadingAccounts ? (
+            <Text style={styles.tradeCount}>
+              {totalTrades === null
+                ? 'Counting saved trades...'
+                : `${totalTrades} saved trade${totalTrades === 1 ? '' : 's'} in ${accountScopeLabel}`}
+            </Text>
+          ) : null}
           {focusLabel ? <Text style={styles.focusText}>Focus: {focusLabel}</Text> : null}
         </View>
         <PrimaryLinkButton href={NEW_TRADE_ROUTE}>Log trade</PrimaryLinkButton>
@@ -122,13 +154,13 @@ export default function TradesScreen() {
         </View>
       ) : null}
 
-      {error ? (
+      {accountError || error ? (
         <View style={styles.statePanel}>
-          <Text style={styles.errorText}>{error}</Text>
+          <Text style={styles.errorText}>{accountError ?? error}</Text>
         </View>
       ) : null}
 
-      {!isLoading && !error && trades.length === 0 ? (
+      {!isLoading && !accountError && !error && trades.length === 0 ? (
         <View style={styles.statePanel}>
           <Text style={styles.stateTitle}>No trades yet</Text>
           <Text style={styles.stateText}>Log the first manual trade to start building history.</Text>
@@ -226,6 +258,12 @@ const styles = StyleSheet.create({
     color: '#475569',
     fontSize: 15,
     lineHeight: 22
+  },
+  tradeCount: {
+    color: '#64748B',
+    fontSize: 14,
+    fontWeight: '700',
+    lineHeight: 20
   },
   buttonPressed: {
     opacity: 0.76
