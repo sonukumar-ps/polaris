@@ -5,6 +5,28 @@ const path = require('node:path');
 const ts = require('typescript');
 
 const repoRoot = path.resolve(__dirname, '..');
+
+// Enable TypeScript sub-module resolution so imports added to insights.ts can be loaded
+require.extensions['.ts'] = function (mod, filename) {
+  const source = fs.readFileSync(filename, 'utf8');
+  const output = ts.transpileModule(source, {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
+    fileName: filename
+  }).outputText;
+  mod._compile(output, filename);
+};
+
+const originalResolveFilename = Module._resolveFilename.bind(Module);
+Module._resolveFilename = function (request, parent, isMain, options) {
+  try {
+    return originalResolveFilename(request, parent, isMain, options);
+  } catch (err) {
+    if (err.code === 'MODULE_NOT_FOUND' && !path.extname(request)) {
+      try { return originalResolveFilename(request + '.ts', parent, isMain, options); } catch {}
+    }
+    throw err;
+  }
+};
 const sourcePath = path.join(repoRoot, 'lib/trades/insights.ts');
 const source = fs.readFileSync(sourcePath, 'utf8');
 const output = ts.transpileModule(source, {

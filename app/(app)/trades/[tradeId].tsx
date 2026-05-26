@@ -439,6 +439,8 @@ function TradeReadOnlyCard({ onEdit, trade }: { onEdit: () => void; trade: Trade
           <Text style={[styles.notesText, { color: theme.muted }]}>{trade.notes}</Text>
         </View>
       ) : null}
+
+      {trade.psychology ? <PsychologyCard trade={trade} /> : null}
     </>
   );
 }
@@ -767,6 +769,115 @@ function Metric({ label, value }: { label: string; value: string }) {
       <Text style={[styles.metricValue, { color: theme.text }]}>{value}</Text>
     </View>
   );
+}
+
+function PsychologyCard({ trade }: { trade: TradeSummary }) {
+  const theme = useAppTheme();
+  const p = trade.psychology!;
+  const isClosed = trade.status === 'closed';
+
+  const hasPreTrade = !!(
+    p.emotional_state || p.energy_level !== null || p.focus_level !== null ||
+    p.conviction_level !== null || p.session || p.market_condition ||
+    p.htf_bias || p.setup_quality !== null
+  );
+  const hasExecution = isClosed && !!(
+    p.followed_plan !== null || p.entry_timing || p.exit_timing ||
+    p.moved_stop_loss !== null || p.moved_take_profit !== null || p.position_size_adherence
+  );
+
+  return (
+    <View style={[styles.dividedSection, { borderColor: theme.border }]}>
+      <Text style={[styles.sectionTitle, { color: theme.text }]}>Psychology</Text>
+
+      {hasPreTrade ? (
+        <>
+          <Text style={[styles.psychSubhead, { color: theme.muted }]}>Pre-trade state</Text>
+          <View style={styles.psychGrid}>
+            {p.emotional_state ? <PsychChip label="Emotion" value={formatPsychValue(p.emotional_state)} /> : null}
+            {p.energy_level !== null ? <PsychChip label="Energy" value={`${p.energy_level}/5`} /> : null}
+            {p.focus_level !== null ? <PsychChip label="Focus" value={`${p.focus_level}/5`} /> : null}
+            {p.conviction_level !== null ? <PsychChip label="Conviction" value={`${p.conviction_level}/10`} /> : null}
+            {p.session ? <PsychChip label="Session" value={formatPsychValue(p.session)} /> : null}
+            {p.market_condition ? <PsychChip label="Market" value={formatPsychValue(p.market_condition)} /> : null}
+            {p.htf_bias ? <PsychChip label="HTF bias" value={formatPsychValue(p.htf_bias)} /> : null}
+            {p.setup_quality !== null ? <PsychChip label="Setup quality" value={`${p.setup_quality}/5`} /> : null}
+          </View>
+        </>
+      ) : null}
+
+      {hasExecution ? (
+        <>
+          <Text style={[styles.psychSubhead, { color: theme.muted }]}>Execution assessment</Text>
+          <View style={styles.psychGrid}>
+            {p.followed_plan !== null ? (
+              <PsychChip
+                label="Followed plan"
+                tone={p.followed_plan ? 'positive' : 'negative'}
+                value={p.followed_plan ? 'Yes' : 'No'}
+              />
+            ) : null}
+            {p.entry_timing ? <PsychChip label="Entry timing" value={formatPsychValue(p.entry_timing)} /> : null}
+            {p.exit_timing ? <PsychChip label="Exit timing" value={formatPsychValue(p.exit_timing)} /> : null}
+            {p.moved_stop_loss !== null ? (
+              <PsychChip
+                label="Moved SL"
+                tone={p.moved_stop_loss ? 'negative' : 'positive'}
+                value={p.moved_stop_loss ? 'Yes' : 'No'}
+              />
+            ) : null}
+            {p.moved_take_profit !== null ? (
+              <PsychChip label="Moved TP" value={p.moved_take_profit ? 'Yes' : 'No'} />
+            ) : null}
+            {p.position_size_adherence ? (
+              <PsychChip
+                label="Size adherence"
+                tone={
+                  p.position_size_adherence === 'correct'
+                    ? 'positive'
+                    : p.position_size_adherence === 'oversized'
+                      ? 'negative'
+                      : undefined
+                }
+                value={formatPsychValue(p.position_size_adherence)}
+              />
+            ) : null}
+          </View>
+        </>
+      ) : null}
+
+      {p.lesson ? (
+        <View style={[styles.lessonBlock, { borderLeftColor: theme.accent }]}>
+          <Text style={[styles.lessonLabel, { color: theme.muted }]}>Lesson</Text>
+          <Text style={[styles.lessonText, { color: theme.text }]}>{p.lesson}</Text>
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
+function PsychChip({
+  label,
+  tone,
+  value
+}: {
+  label: string;
+  tone?: 'positive' | 'negative';
+  value: string;
+}) {
+  const theme = useAppTheme();
+  const valueColor = tone === 'positive' ? theme.positive : tone === 'negative' ? theme.danger : theme.text;
+
+  return (
+    <View style={[styles.psychChip, { backgroundColor: theme.mutedSurface }]}>
+      <Text style={[styles.psychChipLabel, { color: theme.muted }]}>{label}</Text>
+      <Text style={[styles.psychChipValue, { color: valueColor }]}>{value}</Text>
+    </View>
+  );
+}
+
+function formatPsychValue(value: string) {
+  return value.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 function createDraftFromTrade(trade: TradeSummary): TradeEditDraft {
@@ -1156,5 +1267,43 @@ const styles = StyleSheet.create({
   errorText: {
     fontSize: 14,
     fontWeight: '800'
+  },
+  psychSubhead: {
+    fontSize: 12,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8
+  },
+  psychGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8
+  },
+  psychChip: {
+    gap: 3,
+    borderRadius: 8,
+    minWidth: 80,
+    padding: 10
+  },
+  psychChipLabel: {
+    fontSize: 10,
+    fontWeight: '800'
+  },
+  psychChipValue: {
+    fontSize: 14,
+    fontWeight: '800'
+  },
+  lessonBlock: {
+    borderLeftWidth: 3,
+    gap: 4,
+    paddingLeft: 12
+  },
+  lessonLabel: {
+    fontSize: 11,
+    fontWeight: '800'
+  },
+  lessonText: {
+    fontSize: 15,
+    lineHeight: 23
   }
 });
