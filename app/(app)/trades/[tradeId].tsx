@@ -15,15 +15,21 @@ import {
   useAppTheme
 } from '@/lib/ui';
 import {
+  addStopLossMove,
+  deleteStopLossMove,
   getTrade,
   listAccounts,
+  listStopLossMoves,
   listStrategies,
   listTradeImages,
+  markBulletproof,
   updateManualTrade,
   uploadTradeImage
 } from '@/lib/trades';
+import { seedStopLossHistory } from '@/lib/trades/seed-sl-history';
 import type {
   ManualTradeTagInput,
+  StopLossHistoryRow,
   TradeDirection,
   TradeImage,
   TradeSummary,
@@ -304,36 +310,40 @@ export default function TradeDetailScreen() {
             )}
           </Card>
 
-          <Card style={styles.sideCard}>
-            <View style={styles.cardHeader}>
-              <View>
-                <Text style={[styles.sectionTitle, { color: theme.text }]}>Chart screenshots</Text>
-                <Text style={[styles.sideMeta, { color: theme.muted }]}>Attach visual context</Text>
+          <View style={styles.sideColumn}>
+            <StopLossTrailCard trade={trade} onTradeUpdate={(t) => setTrade(t)} />
+
+            <Card style={styles.sideCard}>
+              <View style={styles.cardHeader}>
+                <View>
+                  <Text style={[styles.sectionTitle, { color: theme.text }]}>Chart screenshots</Text>
+                  <Text style={[styles.sideMeta, { color: theme.muted }]}>Attach visual context</Text>
+                </View>
+                <PrimaryButton disabled={isUploadingImage} onPress={handleAttachImage}>
+                  {isUploadingImage ? 'Uploading...' : 'Attach'}
+                </PrimaryButton>
               </View>
-              <PrimaryButton disabled={isUploadingImage} onPress={handleAttachImage}>
-                {isUploadingImage ? 'Uploading...' : 'Attach'}
-              </PrimaryButton>
-            </View>
-            {imageError ? <Text style={[styles.errorText, { color: theme.danger }]}>{imageError}</Text> : null}
-            {images.length === 0 ? (
-              <EmptyState body="Screenshots attached to this trade will appear here." title="No screenshots" />
-            ) : (
-              <View style={styles.imageGrid}>
-                {images.map((image) => (
-                  <Pressable
-                    key={image.id}
-                    style={[styles.imageFrame, { backgroundColor: theme.mutedSurface, borderColor: theme.border }]}
-                  >
-                    {image.signedUrl ? (
-                      <Image source={{ uri: image.signedUrl }} style={styles.chartImage} />
-                    ) : (
-                      <Text style={[styles.sideMeta, { color: theme.muted }]}>Preview unavailable</Text>
-                    )}
-                  </Pressable>
-                ))}
-              </View>
-            )}
-          </Card>
+              {imageError ? <Text style={[styles.errorText, { color: theme.danger }]}>{imageError}</Text> : null}
+              {images.length === 0 ? (
+                <EmptyState body="Screenshots attached to this trade will appear here." title="No screenshots" />
+              ) : (
+                <View style={styles.imageGrid}>
+                  {images.map((image) => (
+                    <Pressable
+                      key={image.id}
+                      style={[styles.imageFrame, { backgroundColor: theme.mutedSurface, borderColor: theme.border }]}
+                    >
+                      {image.signedUrl ? (
+                        <Image source={{ uri: image.signedUrl }} style={styles.chartImage} />
+                      ) : (
+                        <Text style={[styles.sideMeta, { color: theme.muted }]}>Preview unavailable</Text>
+                      )}
+                    </Pressable>
+                  ))}
+                </View>
+              )}
+            </Card>
+          </View>
         </View>
       ) : null}
 
@@ -364,6 +374,272 @@ export default function TradeDetailScreen() {
         </>
       ) : null}
     </AppShell>
+  );
+}
+
+function StopLossTrailCard({
+  trade,
+  onTradeUpdate
+}: {
+  trade: TradeSummary;
+  onTradeUpdate: (trade: TradeSummary) => void;
+}) {
+  const theme = useAppTheme();
+  const [history, setHistory] = useState<StopLossHistoryRow[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isAdding, setIsAdding] = useState(false);
+  const [isMarkingBp, setIsMarkingBp] = useState(false);
+  const [showForm, setShowForm] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [newPrice, setNewPrice] = useState('');
+  const [reason, setReason] = useState('');
+
+  useEffect(() => {
+    let isActive = true;
+    async function load() {
+      setIsLoading(true);
+      try {
+        const moves = await listStopLossMoves(trade.id);
+        if (isActive) setHistory(moves);
+      } catch {
+        // silent
+      } finally {
+        if (isActive) setIsLoading(false);
+      }
+    }
+    void load();
+    return () => {
+      isActive = false;
+    };
+  }, [trade.id]);
+
+  const currentSl = history.length > 0 ? history[history.length - 1].new_price : trade.stop_loss_price;
+  const today = new Date().toISOString().slice(0, 10);
+  const trailedToday = history.some((m) => m.moved_at.slice(0, 10) === today);
+
+  async function handleAddMove() {
+    const parsed = Number(newPrice);
+    if (!parsed || !Number.isFinite(parsed)) {
+      setError('Enter a valid new SL price.');
+      return;
+    }
+    if (currentSl === null) {
+      setError('Trade has no initial stop loss to move.');
+      return;
+    }
+    if (trailedToday) {
+      setError("Already trailed today. Jason's rule: max 1 trail per day.");
+      return;
+    }
+
+    setIsAdding(true);
+    setError(null);
+
+    try {
+      await addStopLossMove({
+        newPrice: parsed,
+        oldPrice: Number(currentSl),
+        reason: reason.trim() || undefined,
+        tradeId: trade.id
+      });
+
+      const refreshed = await listStopLossMoves(trade.id);
+      setHistory(refreshed);
+      setNewPrice('');
+      setReason('');
+      setShowForm(false);
+
+      // Reload trade to reflect trailing_stop_count update
+      const updatedTrade = await getTrade(trade.id);
+      onTradeUpdate(updatedTrade);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not save SL move.');
+    } finally {
+      setIsAdding(false);
+    }
+  }
+
+  async function handleMarkBulletproof() {
+    setIsMarkingBp(true);
+    setError(null);
+    try {
+      await markBulletproof(trade.id);
+      const updatedTrade = await getTrade(trade.id);
+      onTradeUpdate(updatedTrade);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not mark as bulletproof.');
+    } finally {
+      setIsMarkingBp(false);
+    }
+  }
+
+  async function handleDelete(id: string) {
+    try {
+      await deleteStopLossMove(id);
+      const refreshed = await listStopLossMoves(trade.id);
+      setHistory(refreshed);
+      const updatedTrade = await getTrade(trade.id);
+      onTradeUpdate(updatedTrade);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not delete move.');
+    }
+  }
+
+  return (
+    <Card style={styles.sideCard}>
+      <View style={styles.cardHeader}>
+        <View>
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>Stop-loss trail</Text>
+          <Text style={[styles.sideMeta, { color: theme.muted }]}>
+            {history.length} move{history.length !== 1 ? 's' : ''}
+            {trade.is_bulletproof ? ' • Bulletproof' : ''}
+          </Text>
+        </View>
+        {!trade.is_bulletproof && currentSl !== null ? (
+          <Pressable
+            disabled={isMarkingBp}
+            onPress={handleMarkBulletproof}
+            style={({ pressed }) => [
+              styles.inlineAction,
+              { backgroundColor: theme.card, borderColor: theme.positive },
+              pressed && styles.pressed
+            ]}
+          >
+            <Text style={[styles.inlineActionText, { color: theme.positive }]}>
+              {isMarkingBp ? 'Marking...' : '🛡️ Bulletproof'}
+            </Text>
+          </Pressable>
+        ) : null}
+      </View>
+
+      {currentSl !== null ? (
+        <View style={[styles.currentSlBox, { backgroundColor: theme.mutedSurface }]}>
+          <Text style={[styles.currentSlLabel, { color: theme.muted }]}>Current SL</Text>
+          <Text style={[styles.currentSlValue, { color: theme.text }]}>{formatNumber(Number(currentSl))}</Text>
+        </View>
+      ) : null}
+
+      {isLoading ? <Text style={[styles.sideMeta, { color: theme.muted }]}>Loading...</Text> : null}
+
+      {!isLoading && history.length === 0 ? (
+        <View style={{ gap: 8 }}>
+          <Text style={[styles.emptyBody, { color: theme.muted }]}>
+            No SL moves yet. Add one when you trail the stop or move to breakeven.
+          </Text>
+          <Pressable
+            onPress={async () => {
+              setError(null);
+              try {
+                const result = await seedStopLossHistory();
+                const refreshed = await listStopLossMoves(trade.id);
+                setHistory(refreshed);
+                const updatedTrade = await getTrade(trade.id);
+                onTradeUpdate(updatedTrade);
+                if (result.movesAdded === 0) {
+                  setError('No SL moves added. Try a different trade with a stop loss.');
+                }
+              } catch (err) {
+                setError(err instanceof Error ? err.message : 'Could not seed SL history.');
+              }
+            }}
+            style={({ pressed }) => [
+              styles.inlineAction,
+              { backgroundColor: theme.mutedSurface, borderColor: theme.border },
+              pressed && styles.pressed
+            ]}
+          >
+            <Text style={[styles.inlineActionText, { color: theme.accent }]}>
+              🧪 Seed SL history across trades
+            </Text>
+          </Pressable>
+        </View>
+      ) : null}
+
+      {history.length > 0 ? (
+        <View style={styles.timelineList}>
+          {history.map((move, idx) => (
+            <View key={move.id} style={[styles.timelineRow, { borderBottomColor: theme.border }]}>
+              <View style={[styles.timelineDot, { backgroundColor: theme.accent }]} />
+              <View style={styles.timelineContent}>
+                <Text style={[styles.timelineDate, { color: theme.muted }]}>
+                  {formatDate(move.moved_at)} #{idx + 1}
+                </Text>
+                <Text style={[styles.timelinePrices, { color: theme.text }]}>
+                  {formatNumber(Number(move.old_price))} → {formatNumber(Number(move.new_price))}
+                </Text>
+                {move.reason ? (
+                  <Text style={[styles.timelineReason, { color: theme.muted }]}>{move.reason}</Text>
+                ) : null}
+              </View>
+              <Pressable
+                onPress={() => handleDelete(move.id)}
+                style={({ pressed }) => [pressed && styles.pressed]}
+              >
+                <Text style={[styles.timelineDelete, { color: theme.danger }]}>×</Text>
+              </Pressable>
+            </View>
+          ))}
+        </View>
+      ) : null}
+
+      {error ? <Text style={[styles.errorText, { color: theme.danger }]}>{error}</Text> : null}
+
+      {showForm ? (
+        <View style={styles.slFormBox}>
+          <TextField
+            inputMode="decimal"
+            label="New SL price"
+            onChangeText={setNewPrice}
+            placeholder="1.2680"
+            value={newPrice}
+          />
+          <TextField
+            label="Reason (optional)"
+            onChangeText={setReason}
+            placeholder="Trail to last daily low"
+            value={reason}
+          />
+          <View style={styles.slFormButtons}>
+            <Pressable
+              onPress={() => {
+                setShowForm(false);
+                setNewPrice('');
+                setReason('');
+                setError(null);
+              }}
+              style={({ pressed }) => [
+                styles.inlineAction,
+                { backgroundColor: theme.card, borderColor: theme.border },
+                pressed && styles.pressed
+              ]}
+            >
+              <Text style={[styles.inlineActionText, { color: theme.muted }]}>Cancel</Text>
+            </Pressable>
+            <PrimaryButton disabled={isAdding} onPress={handleAddMove}>
+              {isAdding ? 'Saving...' : 'Save move'}
+            </PrimaryButton>
+          </View>
+        </View>
+      ) : (
+        <Pressable
+          disabled={trailedToday || currentSl === null}
+          onPress={() => setShowForm(true)}
+          style={({ pressed }) => [
+            styles.inlineAction,
+            {
+              backgroundColor: theme.card,
+              borderColor: trailedToday ? theme.border : theme.accent,
+              opacity: trailedToday || currentSl === null ? 0.5 : 1
+            },
+            pressed && styles.pressed
+          ]}
+        >
+          <Text style={[styles.inlineActionText, { color: trailedToday ? theme.muted : theme.accent }]}>
+            {trailedToday ? '🔒 Trailed today (max 1/day)' : '+ Add SL move'}
+          </Text>
+        </Pressable>
+      )}
+    </Card>
   );
 }
 
@@ -1380,5 +1656,73 @@ const styles = StyleSheet.create({
   lessonText: {
     fontSize: 15,
     lineHeight: 23
+  },
+  sideColumn: {
+    minWidth: 280,
+    flex: 1,
+    gap: 14
+  },
+  currentSlBox: {
+    borderRadius: 8,
+    padding: 12,
+    gap: 3
+  },
+  currentSlLabel: {
+    fontSize: 11,
+    fontWeight: '800'
+  },
+  currentSlValue: {
+    fontSize: 22,
+    fontWeight: '800'
+  },
+  timelineList: {
+    gap: 0
+  },
+  timelineRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    borderBottomWidth: 1,
+    paddingVertical: 10
+  },
+  timelineDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginTop: 6
+  },
+  timelineContent: {
+    flex: 1,
+    gap: 2
+  },
+  timelineDate: {
+    fontSize: 11,
+    fontWeight: '800'
+  },
+  timelinePrices: {
+    fontSize: 14,
+    fontWeight: '800'
+  },
+  timelineReason: {
+    fontSize: 12,
+    lineHeight: 17
+  },
+  timelineDelete: {
+    fontSize: 20,
+    fontWeight: '800',
+    paddingHorizontal: 6
+  },
+  slFormBox: {
+    gap: 10,
+    marginTop: 4
+  },
+  slFormButtons: {
+    flexDirection: 'row',
+    gap: 8,
+    justifyContent: 'flex-end'
+  },
+  emptyBody: {
+    fontSize: 13,
+    lineHeight: 19
   }
 });
