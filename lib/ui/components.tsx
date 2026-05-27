@@ -21,10 +21,11 @@ import { useAccountScope } from '@/lib/trades';
 import { useAppTheme } from './theme';
 import type { AppTheme } from './theme';
 
-type AppRoute = 'dashboard' | 'add-trade' | 'trades' | 'risk' | 'insights';
+type AppRoute = 'dashboard' | 'add-trade' | 'checklist' | 'trades' | 'risk' | 'insights';
 
 const navigationItems: { href: Href; key: AppRoute; label: string }[] = [
   { href: '/home' as Href, key: 'dashboard', label: 'Dashboard' },
+  { href: '/checklist' as Href, key: 'checklist', label: 'Checklist' },
   { href: '/trades/new' as Href, key: 'add-trade', label: 'Add Trade' },
   { href: '/trades' as Href, key: 'trades', label: 'Trades' },
   { href: '/insights' as Href, key: 'insights', label: 'Insights' },

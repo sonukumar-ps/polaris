@@ -5,7 +5,6 @@ export type Json =
   | null
   | { [key: string]: Json | undefined }
   | Json[]
-
 export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
@@ -231,6 +230,142 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "strategies_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      strategy_checklists: {
+        Row: {
+          candlestick_pattern: string | null
+          checklist_date: string
+          correlation_pairs: string[] | null
+          created_at: string
+          deceleration_evidence: string | null
+          deceleration_pass: boolean | null
+          decision: string | null
+          decision_reason: string | null
+          direction: string | null
+          ema_zone_visited_pass: boolean | null
+          ema50_position_pass: boolean | null
+          emotional_rating: number | null
+          id: string
+          indicator_signal: string | null
+          market_condition_note: string | null
+          market_condition_pass: boolean | null
+          market_phase: string | null
+          market_phase_pass: boolean | null
+          mtf_confirmation: string | null
+          news_check_clear: boolean | null
+          reversal_pattern: string | null
+          reversal_sr_pass: boolean | null
+          rr_on_trade: number | null
+          rr_to_last_swing: number | null
+          rr_to_next_sr: number | null
+          sr_reaction_pass: boolean | null
+          sr_touch_count: number | null
+          sr_types: string[] | null
+          strategy_id: string
+          strategy_type: string
+          symbol: string
+          total_sr_touches: number | null
+          trade_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          candlestick_pattern?: string | null
+          checklist_date: string
+          correlation_pairs?: string[] | null
+          created_at?: string
+          deceleration_evidence?: string | null
+          deceleration_pass?: boolean | null
+          decision?: string | null
+          decision_reason?: string | null
+          direction?: string | null
+          ema_zone_visited_pass?: boolean | null
+          ema50_position_pass?: boolean | null
+          emotional_rating?: number | null
+          id?: string
+          indicator_signal?: string | null
+          market_condition_note?: string | null
+          market_condition_pass?: boolean | null
+          market_phase?: string | null
+          market_phase_pass?: boolean | null
+          mtf_confirmation?: string | null
+          news_check_clear?: boolean | null
+          reversal_pattern?: string | null
+          reversal_sr_pass?: boolean | null
+          rr_on_trade?: number | null
+          rr_to_last_swing?: number | null
+          rr_to_next_sr?: number | null
+          sr_reaction_pass?: boolean | null
+          sr_touch_count?: number | null
+          sr_types?: string[] | null
+          strategy_id: string
+          strategy_type?: string
+          symbol: string
+          total_sr_touches?: number | null
+          trade_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          candlestick_pattern?: string | null
+          checklist_date?: string
+          correlation_pairs?: string[] | null
+          created_at?: string
+          deceleration_evidence?: string | null
+          deceleration_pass?: boolean | null
+          decision?: string | null
+          decision_reason?: string | null
+          direction?: string | null
+          ema_zone_visited_pass?: boolean | null
+          ema50_position_pass?: boolean | null
+          emotional_rating?: number | null
+          id?: string
+          indicator_signal?: string | null
+          market_condition_note?: string | null
+          market_condition_pass?: boolean | null
+          market_phase?: string | null
+          market_phase_pass?: boolean | null
+          mtf_confirmation?: string | null
+          news_check_clear?: boolean | null
+          reversal_pattern?: string | null
+          reversal_sr_pass?: boolean | null
+          rr_on_trade?: number | null
+          rr_to_last_swing?: number | null
+          rr_to_next_sr?: number | null
+          sr_reaction_pass?: boolean | null
+          sr_touch_count?: number | null
+          sr_types?: string[] | null
+          strategy_id?: string
+          strategy_type?: string
+          symbol?: string
+          total_sr_touches?: number | null
+          trade_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "strategy_checklists_strategy_id_fkey"
+            columns: ["strategy_id"]
+            isOneToOne: false
+            referencedRelation: "strategies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "strategy_checklists_trade_id_fkey"
+            columns: ["trade_id"]
+            isOneToOne: false
+            referencedRelation: "trades"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "strategy_checklists_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
@@ -571,11 +706,8 @@ export type Database = {
     }
   }
 }
-
 type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
-
 type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
-
 export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
@@ -604,7 +736,6 @@ export type Tables<
       ? R
       : never
     : never
-
 export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
@@ -629,7 +760,6 @@ export type TablesInsert<
       ? I
       : never
     : never
-
 export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
@@ -654,7 +784,6 @@ export type TablesUpdate<
       ? U
       : never
     : never
-
 export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
@@ -671,7 +800,6 @@ export type Enums<
   : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
     ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
     : never
-
 export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
@@ -688,7 +816,6 @@ export type CompositeTypes<
   : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
     ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
     : never
-
 export const Constants = {
   graphql_public: {
     Enums: {},
