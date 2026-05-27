@@ -188,6 +188,59 @@ export type Database = {
         }
         Relationships: []
       }
+      sr_levels: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          last_touched_date: string | null
+          level_role: string | null
+          notes: string | null
+          price: number
+          symbol: string
+          touch_count: number
+          type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          last_touched_date?: string | null
+          level_role?: string | null
+          notes?: string | null
+          price: number
+          symbol: string
+          touch_count?: number
+          type: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          last_touched_date?: string | null
+          level_role?: string | null
+          notes?: string | null
+          price?: number
+          symbol?: string
+          touch_count?: number
+          type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sr_levels_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stop_loss_history: {
         Row: {
           created_at: string
