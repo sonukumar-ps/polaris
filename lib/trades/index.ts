@@ -2,6 +2,7 @@ export * from './analytics';
 export * from './account-scope';
 export * from './backtesting';
 export * from './checklists';
+export * from './exposure';
 export * from './insights';
 export * from './orders';
 export * from './pnl';
