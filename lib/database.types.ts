@@ -12,6 +12,31 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       accounts: {
@@ -163,41 +188,6 @@ export type Database = {
         }
         Relationships: []
       }
-      tags: {
-        Row: {
-          color: string | null
-          created_at: string
-          id: string
-          name: string
-          type: Database["public"]["Enums"]["tag_type"]
-          user_id: string
-        }
-        Insert: {
-          color?: string | null
-          created_at?: string
-          id?: string
-          name: string
-          type?: Database["public"]["Enums"]["tag_type"]
-          user_id: string
-        }
-        Update: {
-          color?: string | null
-          created_at?: string
-          id?: string
-          name?: string
-          type?: Database["public"]["Enums"]["tag_type"]
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "tags_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       strategies: {
         Row: {
           created_at: string
@@ -248,6 +238,41 @@ export type Database = {
           },
         ]
       }
+      tags: {
+        Row: {
+          color: string | null
+          created_at: string
+          id: string
+          name: string
+          type: Database["public"]["Enums"]["tag_type"]
+          user_id: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          type?: Database["public"]["Enums"]["tag_type"]
+          user_id: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          type?: Database["public"]["Enums"]["tag_type"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tags_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       trade_images: {
         Row: {
           caption: string | null
@@ -283,6 +308,90 @@ export type Database = {
           },
           {
             foreignKeyName: "trade_images_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      trade_psychology: {
+        Row: {
+          conviction_level: number | null
+          created_at: string
+          emotional_state: string | null
+          energy_level: number | null
+          entry_timing: string | null
+          exit_timing: string | null
+          focus_level: number | null
+          followed_plan: boolean | null
+          htf_bias: string | null
+          id: string
+          lesson: string | null
+          market_condition: string | null
+          moved_stop_loss: boolean | null
+          moved_take_profit: boolean | null
+          position_size_adherence: string | null
+          session: string | null
+          setup_quality: number | null
+          trade_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          conviction_level?: number | null
+          created_at?: string
+          emotional_state?: string | null
+          energy_level?: number | null
+          entry_timing?: string | null
+          exit_timing?: string | null
+          focus_level?: number | null
+          followed_plan?: boolean | null
+          htf_bias?: string | null
+          id?: string
+          lesson?: string | null
+          market_condition?: string | null
+          moved_stop_loss?: boolean | null
+          moved_take_profit?: boolean | null
+          position_size_adherence?: string | null
+          session?: string | null
+          setup_quality?: number | null
+          trade_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          conviction_level?: number | null
+          created_at?: string
+          emotional_state?: string | null
+          energy_level?: number | null
+          entry_timing?: string | null
+          exit_timing?: string | null
+          focus_level?: number | null
+          followed_plan?: boolean | null
+          htf_bias?: string | null
+          id?: string
+          lesson?: string | null
+          market_condition?: string | null
+          moved_stop_loss?: boolean | null
+          moved_take_profit?: boolean | null
+          position_size_adherence?: string | null
+          session?: string | null
+          setup_quality?: number | null
+          trade_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trade_psychology_trade_id_fkey"
+            columns: ["trade_id"]
+            isOneToOne: true
+            referencedRelation: "trades"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trade_psychology_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
@@ -334,15 +443,20 @@ export type Database = {
           exit_price: number | null
           fees: number
           gross_pnl: number | null
+          htf_timeframe: string | null
           id: string
           net_pnl: number | null
           notes: string | null
           opened_at: string
+          planned_rr: number | null
           quantity: number
           r_multiple: number | null
           risk_amount: number | null
           status: Database["public"]["Enums"]["trade_status"]
+          stop_loss_price: number | null
           strategy_id: string | null
+          take_profit_price: number | null
+          timeframe: string | null
           updated_at: string
           user_id: string
         }
@@ -356,15 +470,20 @@ export type Database = {
           exit_price?: number | null
           fees?: number
           gross_pnl?: number | null
+          htf_timeframe?: string | null
           id?: string
           net_pnl?: number | null
           notes?: string | null
           opened_at: string
+          planned_rr?: number | null
           quantity: number
           r_multiple?: number | null
           risk_amount?: number | null
           status?: Database["public"]["Enums"]["trade_status"]
+          stop_loss_price?: number | null
           strategy_id?: string | null
+          take_profit_price?: number | null
+          timeframe?: string | null
           updated_at?: string
           user_id: string
         }
@@ -378,15 +497,20 @@ export type Database = {
           exit_price?: number | null
           fees?: number
           gross_pnl?: number | null
+          htf_timeframe?: string | null
           id?: string
           net_pnl?: number | null
           notes?: string | null
           opened_at?: string
+          planned_rr?: number | null
           quantity?: number
           r_multiple?: number | null
           risk_amount?: number | null
           status?: Database["public"]["Enums"]["trade_status"]
+          stop_loss_price?: number | null
           strategy_id?: string | null
+          take_profit_price?: number | null
+          timeframe?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -437,6 +561,8 @@ export type Database = {
         | "setup"
         | "session"
         | "custom"
+        | "psychology"
+        | "market_context"
       trade_direction: "long" | "short"
       trade_status: "open" | "closed" | "cancelled"
     }
@@ -564,6 +690,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       asset_class: ["stock", "option", "future", "forex", "crypto", "other"],
@@ -574,6 +703,8 @@ export const Constants = {
         "setup",
         "session",
         "custom",
+        "psychology",
+        "market_context",
       ],
       trade_direction: ["long", "short"],
       trade_status: ["open", "closed", "cancelled"],

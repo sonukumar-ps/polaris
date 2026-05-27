@@ -24,8 +24,41 @@ import {
 } from '@/lib/ui';
 import { calculateRealizedPnl, createManualTrade, createStrategy, listAccounts, listStrategies } from '@/lib/trades';
 import type { TradingAccount, TradingStrategy } from '@/lib/trades';
+import type {
+  EmotionalState,
+  EntryTiming,
+  ExitTiming,
+  HtfBias,
+  MarketCondition,
+  PositionSizeAdherence,
+  TradePsychologyInput,
+  TradingSession
+} from '@/lib/trades/backtesting/psychology.types';
 
 type Direction = 'long' | 'short';
+
+type PsychDraft = {
+  convictionLevel: string;
+  emotionalState: EmotionalState | '';
+  energyLevel: string;
+  entryTiming: EntryTiming | '';
+  exitTiming: ExitTiming | '';
+  focusLevel: string;
+  followedPlan: boolean | null;
+  htfBias: HtfBias | '';
+  htfTimeframe: string;
+  lesson: string;
+  marketCondition: MarketCondition | '';
+  movedStopLoss: boolean | null;
+  movedTakeProfit: boolean | null;
+  plannedRr: string;
+  positionSizeAdherence: PositionSizeAdherence | '';
+  session: TradingSession | '';
+  setupQuality: string;
+  stopLossPrice: string;
+  takeProfitPrice: string;
+  timeframe: string;
+};
 
 type TradeDraft = {
   accountId: string;
@@ -62,6 +95,30 @@ type DropdownOption = {
 };
 
 const TRADES_ROUTE = '/trades' as Href;
+
+const emptyPsychDraft: PsychDraft = {
+  convictionLevel: '',
+  emotionalState: '',
+  energyLevel: '',
+  entryTiming: '',
+  exitTiming: '',
+  focusLevel: '',
+  followedPlan: null,
+  htfBias: '',
+  htfTimeframe: '',
+  lesson: '',
+  marketCondition: '',
+  movedStopLoss: null,
+  movedTakeProfit: null,
+  plannedRr: '',
+  positionSizeAdherence: '',
+  session: '',
+  setupQuality: '',
+  stopLossPrice: '',
+  takeProfitPrice: '',
+  timeframe: ''
+};
+
 const emptyStrategyDraft: StrategyDraft = {
   description: '',
   marketConditions: '',
@@ -151,6 +208,8 @@ export default function NewTradeScreen() {
   const theme = useAppTheme();
   const params = useLocalSearchParams<{ entryPrice?: string; size?: string }>();
   const [draft, setDraft] = useState<TradeDraft>(() => createInitialDraft(params));
+  const [psychDraft, setPsychDraft] = useState<PsychDraft>(emptyPsychDraft);
+  const [isPsychExpanded, setIsPsychExpanded] = useState(false);
   const [accounts, setAccounts] = useState<TradingAccount[]>([]);
   const [strategies, setStrategies] = useState<TradingStrategy[]>([]);
   const [strategyDraft, setStrategyDraft] = useState<StrategyDraft>(emptyStrategyDraft);
@@ -306,6 +365,10 @@ export default function NewTradeScreen() {
     }
   }
 
+  function updatePsychField<Key extends keyof PsychDraft>(key: Key, value: PsychDraft[Key]) {
+    setPsychDraft((current) => ({ ...current, [key]: value }));
+  }
+
   async function handleSaveTrade() {
     const nextErrors = validateDraft(draft);
     setErrors(nextErrors);
@@ -325,12 +388,18 @@ export default function NewTradeScreen() {
         entryPrice: Number(draft.entryPrice),
         exitPrice: draft.exitPrice ? Number(draft.exitPrice) : null,
         fees: Number(draft.fees || '0'),
+        htfTimeframe: psychDraft.htfTimeframe || null,
         notes: draft.notes,
         openedAt: toDateTime(draft.openedAt),
+        plannedRr: psychDraft.plannedRr ? Number(psychDraft.plannedRr) : null,
+        psychology: buildPsychInput(psychDraft),
         quantity: Number(draft.size),
+        stopLossPrice: psychDraft.stopLossPrice ? Number(psychDraft.stopLossPrice) : null,
         strategyId: draft.strategyId,
         symbol: draft.symbol,
-        tags: buildTagInputs(draft)
+        tags: buildTagInputs(draft),
+        takeProfitPrice: psychDraft.takeProfitPrice ? Number(psychDraft.takeProfitPrice) : null,
+        timeframe: psychDraft.timeframe || null
       });
 
       router.replace(`/trades/${savedTrade.id}` as Href);
@@ -536,6 +605,14 @@ export default function NewTradeScreen() {
                 value={draft.notes}
               />
             </View>
+
+            <PsychologySection
+              draft={psychDraft}
+              isClosed={!!(draft.closedAt && draft.exitPrice)}
+              isExpanded={isPsychExpanded}
+              onToggle={() => setIsPsychExpanded((v) => !v)}
+              onUpdate={updatePsychField}
+            />
 
             {submitError ? <Text style={[styles.errorText, { color: theme.danger }]}>{submitError}</Text> : null}
             <PrimaryButton disabled={isSaving} onPress={handleSaveTrade}>
@@ -834,6 +911,247 @@ function buildTagInputs(draft: TradeDraft) {
   ];
 }
 
+function buildPsychInput(p: PsychDraft): TradePsychologyInput {
+  return {
+    convictionLevel: p.convictionLevel ? Number(p.convictionLevel) : undefined,
+    emotionalState: p.emotionalState || undefined,
+    energyLevel: p.energyLevel ? Number(p.energyLevel) : undefined,
+    entryTiming: p.entryTiming || undefined,
+    exitTiming: p.exitTiming || undefined,
+    focusLevel: p.focusLevel ? Number(p.focusLevel) : undefined,
+    followedPlan: p.followedPlan ?? undefined,
+    htfBias: p.htfBias || undefined,
+    lesson: p.lesson || undefined,
+    marketCondition: p.marketCondition || undefined,
+    movedStopLoss: p.movedStopLoss ?? undefined,
+    movedTakeProfit: p.movedTakeProfit ?? undefined,
+    positionSizeAdherence: p.positionSizeAdherence || undefined,
+    session: p.session || undefined,
+    setupQuality: p.setupQuality ? Number(p.setupQuality) : undefined
+  };
+}
+
+function countPsychFields(p: PsychDraft): number {
+  return [
+    p.setupQuality, p.convictionLevel, p.energyLevel, p.focusLevel,
+    p.emotionalState, p.session, p.marketCondition, p.htfBias,
+    p.timeframe, p.htfTimeframe, p.plannedRr, p.stopLossPrice, p.takeProfitPrice,
+    p.followedPlan !== null ? 'y' : '', p.entryTiming, p.exitTiming,
+    p.movedStopLoss !== null ? 'y' : '', p.movedTakeProfit !== null ? 'y' : '',
+    p.positionSizeAdherence, p.lesson
+  ].filter(Boolean).length;
+}
+
+function PsychologySection({
+  draft,
+  isClosed,
+  isExpanded,
+  onToggle,
+  onUpdate
+}: {
+  draft: PsychDraft;
+  isClosed: boolean;
+  isExpanded: boolean;
+  onToggle: () => void;
+  onUpdate: <K extends keyof PsychDraft>(key: K, value: PsychDraft[K]) => void;
+}) {
+  const theme = useAppTheme();
+  const filled = countPsychFields(draft);
+  const total = 20;
+
+  return (
+    <View style={styles.formSection}>
+      <Pressable onPress={onToggle} style={styles.sectionHeaderRow}>
+        <Text style={[styles.sectionTitle, { color: theme.text }]}>
+          How did you trade?{filled > 0 ? ` (${filled}/${total} filled)` : ''}
+        </Text>
+        <Text style={[styles.inlineActionText, { color: theme.muted }]}>{isExpanded ? '▲' : '▼'}</Text>
+      </Pressable>
+
+      {isExpanded ? (
+        <View style={styles.psychFields}>
+          <Text style={[styles.psychSubhead, { color: theme.muted }]}>Pre-trade</Text>
+
+          <ChipSelector
+            label="Setup quality"
+            onSelect={(v) => onUpdate('setupQuality', v as string)}
+            options={['1', '2', '3', '4', '5']}
+            selected={draft.setupQuality}
+          />
+          <ChipSelector
+            label="Conviction (1–10)"
+            onSelect={(v) => onUpdate('convictionLevel', v as string)}
+            options={['1','2','3','4','5','6','7','8','9','10']}
+            selected={draft.convictionLevel}
+          />
+          <ChipSelector
+            label="Energy (1–5)"
+            onSelect={(v) => onUpdate('energyLevel', v as string)}
+            options={['1', '2', '3', '4', '5']}
+            selected={draft.energyLevel}
+          />
+          <ChipSelector
+            label="Focus (1–5)"
+            onSelect={(v) => onUpdate('focusLevel', v as string)}
+            options={['1', '2', '3', '4', '5']}
+            selected={draft.focusLevel}
+          />
+          <ChipSelector
+            label="Emotional state"
+            onSelect={(v) => onUpdate('emotionalState', v as EmotionalState)}
+            options={['neutral','confident','anxious','frustrated','fearful','euphoric','bored','impatient','revenge']}
+            selected={draft.emotionalState}
+          />
+          <ChipSelector
+            label="Session"
+            onSelect={(v) => onUpdate('session', v as TradingSession)}
+            options={['london','new_york','asian','sydney','overlap_london_ny']}
+            labels={{ asian: 'Asian', london: 'London', new_york: 'New York', overlap_london_ny: 'LN/NY Overlap', sydney: 'Sydney' }}
+            selected={draft.session}
+          />
+          <ChipSelector
+            label="Market condition"
+            onSelect={(v) => onUpdate('marketCondition', v as MarketCondition)}
+            options={['trending_up','trending_down','ranging','choppy','breakout','reversal','news_driven','low_volatility']}
+            labels={{ breakout: 'Breakout', choppy: 'Choppy', low_volatility: 'Low Vol', news_driven: 'News', ranging: 'Ranging', reversal: 'Reversal', trending_down: 'Trending ↓', trending_up: 'Trending ↑' }}
+            selected={draft.marketCondition}
+          />
+          <ChipSelector
+            label="HTF bias"
+            onSelect={(v) => onUpdate('htfBias', v as HtfBias)}
+            options={['bullish','bearish','neutral','no_bias']}
+            labels={{ bearish: 'Bearish', bullish: 'Bullish', neutral: 'Neutral', no_bias: 'No bias' }}
+            selected={draft.htfBias}
+          />
+          <View style={styles.fieldRow}>
+            <TextField label="Timeframe" onChangeText={(v) => onUpdate('timeframe', v)} placeholder="H1" value={draft.timeframe} />
+            <TextField label="HTF timeframe" onChangeText={(v) => onUpdate('htfTimeframe', v)} placeholder="H4" value={draft.htfTimeframe} />
+          </View>
+          <View style={styles.fieldRow}>
+            <TextField label="Planned R:R" inputMode="decimal" onChangeText={(v) => onUpdate('plannedRr', v)} placeholder="2.0" value={draft.plannedRr} />
+            <TextField label="Stop loss price" inputMode="decimal" onChangeText={(v) => onUpdate('stopLossPrice', v)} placeholder="Optional" value={draft.stopLossPrice} />
+          </View>
+          <TextField label="Take profit price" inputMode="decimal" onChangeText={(v) => onUpdate('takeProfitPrice', v)} placeholder="Optional" value={draft.takeProfitPrice} />
+
+          {isClosed ? (
+            <>
+              <Text style={[styles.psychSubhead, { color: theme.muted }]}>Execution (for closed trades)</Text>
+              <YesNoToggle label="Followed plan?" onSelect={(v) => onUpdate('followedPlan', v)} selected={draft.followedPlan} />
+              <ChipSelector
+                label="Entry timing"
+                onSelect={(v) => onUpdate('entryTiming', v as EntryTiming)}
+                options={['early','on_time','late','missed_better']}
+                labels={{ early: 'Early', late: 'Late', missed_better: 'Missed better', on_time: 'On time' }}
+                selected={draft.entryTiming}
+              />
+              <ChipSelector
+                label="Exit timing"
+                onSelect={(v) => onUpdate('exitTiming', v as ExitTiming)}
+                options={['early','on_time','late','stopped_out']}
+                labels={{ early: 'Early', late: 'Late', on_time: 'On time', stopped_out: 'Stopped out' }}
+                selected={draft.exitTiming}
+              />
+              <YesNoToggle label="Moved stop loss?" onSelect={(v) => onUpdate('movedStopLoss', v)} selected={draft.movedStopLoss} />
+              <YesNoToggle label="Moved take profit?" onSelect={(v) => onUpdate('movedTakeProfit', v)} selected={draft.movedTakeProfit} />
+              <ChipSelector
+                label="Position size"
+                onSelect={(v) => onUpdate('positionSizeAdherence', v as PositionSizeAdherence)}
+                options={['undersized','correct','oversized']}
+                labels={{ correct: 'Correct', oversized: 'Oversized', undersized: 'Undersized' }}
+                selected={draft.positionSizeAdherence}
+              />
+              <TextField label="Lesson" multiline onChangeText={(v) => onUpdate('lesson', v)} placeholder="What did this trade teach you?" value={draft.lesson} />
+            </>
+          ) : null}
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
+function ChipSelector({
+  label,
+  labels = {},
+  onSelect,
+  options,
+  selected
+}: {
+  label: string;
+  labels?: Record<string, string>;
+  onSelect: (value: string) => void;
+  options: string[];
+  selected: string;
+}) {
+  const theme = useAppTheme();
+
+  return (
+    <View style={styles.chipField}>
+      <Text style={[styles.fieldLabel, { color: theme.muted }]}>{label}</Text>
+      <View style={styles.chipRow}>
+        {options.map((opt) => {
+          const isSelected = selected === opt;
+          return (
+            <Pressable
+              key={opt}
+              onPress={() => onSelect(isSelected ? '' : opt)}
+              style={[
+                styles.chip,
+                {
+                  backgroundColor: isSelected ? theme.accent : theme.mutedSurface,
+                  borderColor: isSelected ? theme.accent : theme.border
+                }
+              ]}
+            >
+              <Text style={[styles.chipText, { color: isSelected ? '#FFFFFF' : theme.muted }]}>
+                {labels[opt] ?? opt.replace(/_/g, ' ')}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
+function YesNoToggle({
+  label,
+  onSelect,
+  selected
+}: {
+  label: string;
+  onSelect: (value: boolean | null) => void;
+  selected: boolean | null;
+}) {
+  const theme = useAppTheme();
+
+  return (
+    <View style={styles.chipField}>
+      <Text style={[styles.fieldLabel, { color: theme.muted }]}>{label}</Text>
+      <View style={styles.chipRow}>
+        {([true, false] as const).map((val) => {
+          const isSelected = selected === val;
+          const labelText = val ? 'Yes' : 'No';
+          return (
+            <Pressable
+              key={String(val)}
+              onPress={() => onSelect(isSelected ? null : val)}
+              style={[
+                styles.chip,
+                {
+                  backgroundColor: isSelected ? theme.accent : theme.mutedSurface,
+                  borderColor: isSelected ? theme.accent : theme.border
+                }
+              ]}
+            >
+              <Text style={[styles.chipText, { color: isSelected ? '#FFFFFF' : theme.muted }]}>{labelText}</Text>
+            </Pressable>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
 function splitRules(value: string) {
   return value
     .split('\n')
@@ -1063,5 +1381,33 @@ const styles = StyleSheet.create({
   previewText: {
     fontSize: 14,
     lineHeight: 21
+  },
+  psychFields: {
+    gap: 14
+  },
+  psychSubhead: {
+    fontSize: 12,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+    marginTop: 4
+  },
+  chipField: {
+    gap: 7
+  },
+  chipRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 7
+  },
+  chip: {
+    borderRadius: 8,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 7
+  },
+  chipText: {
+    fontSize: 13,
+    fontWeight: '800'
   }
 });

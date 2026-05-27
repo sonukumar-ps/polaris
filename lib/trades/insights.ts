@@ -1,4 +1,15 @@
 import type { TradeSummary } from './service';
+import {
+  buildBestProcessInsight,
+  buildConvictionInsight,
+  buildEarlyExitInsight,
+  buildEnergyCorrelationInsight,
+  buildMarketConditionMismatchInsight,
+  buildRevengeTradeInsight,
+  buildSessionSpecializationInsight,
+  buildSetupQualityInsight,
+  buildStopLossDisciplineInsight
+} from './backtesting/mentor-insights';
 
 export type InsightSeverity = 'positive' | 'warning' | 'neutral';
 
@@ -70,10 +81,19 @@ export function generateInsightCoach(trades: TradeSummary[]): Insight {
   return (
     buildLargeLossInsight(closedTrades) ??
     buildMissingSetupInsight(trades) ??
+    buildRevengeTradeInsight(trades) ??
+    buildSetupQualityInsight(trades) ??
+    buildEnergyCorrelationInsight(trades) ??
+    buildStopLossDisciplineInsight(trades) ??
+    buildEarlyExitInsight(trades) ??
     buildWorstTagInsight(closedTrades) ??
+    buildSessionSpecializationInsight(trades) ??
+    buildMarketConditionMismatchInsight(trades) ??
+    buildConvictionInsight(trades) ??
     buildPositiveExpectancyInsight(closedTrades) ??
     buildBestTagInsight(closedTrades) ??
     buildConcentrationInsight(closedTrades) ??
+    buildBestProcessInsight(trades) ??
     buildBaselineInsight(closedTrades)
   );
 }
@@ -292,6 +312,33 @@ function getTagPerformance(closedTrades: ClosedTrade[]): TagPerformance[] {
   }
 
   return Array.from(performanceByTag.values());
+}
+
+export function generateAllInsights(trades: TradeSummary[]): Insight[] {
+  const closedTrades = trades.filter(isClosedTrade);
+
+  if (closedTrades.length === 0) return [];
+
+  const candidates = [
+    buildLargeLossInsight(closedTrades),
+    buildMissingSetupInsight(trades),
+    buildRevengeTradeInsight(trades),
+    buildSetupQualityInsight(trades),
+    buildEnergyCorrelationInsight(trades),
+    buildStopLossDisciplineInsight(trades),
+    buildEarlyExitInsight(trades),
+    buildWorstTagInsight(closedTrades),
+    buildSessionSpecializationInsight(trades),
+    buildMarketConditionMismatchInsight(trades),
+    buildConvictionInsight(trades),
+    buildPositiveExpectancyInsight(closedTrades),
+    buildBestTagInsight(closedTrades),
+    buildConcentrationInsight(closedTrades),
+    buildBestProcessInsight(trades),
+    buildBaselineInsight(closedTrades)
+  ];
+
+  return candidates.filter((insight): insight is Insight => insight !== null);
 }
 
 function isClosedTrade(trade: TradeSummary): trade is ClosedTrade {

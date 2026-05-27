@@ -2,6 +2,8 @@ import { supabase } from '@/lib/supabase';
 
 import type { Database } from '@/lib/database.types';
 import { calculateRealizedPnl } from './pnl';
+import { getTradePsychology, listTradePsychologies, upsertTradePsychology } from './backtesting/psychology';
+import type { TradePsychologyInput, TradePsychologyRow } from './backtesting/psychology.types';
 
 type Tables = Database['public']['Tables'];
 
@@ -28,12 +30,18 @@ export type CreateManualTradeInput = {
   exchange?: string | null;
   exitPrice?: number | null;
   fees?: number;
+  htfTimeframe?: string | null;
   notes?: string | null;
   openedAt: string;
+  plannedRr?: number | null;
+  psychology?: TradePsychologyInput;
   quantity: number;
+  stopLossPrice?: number | null;
   strategyId: string;
   symbol: string;
   tags?: ManualTradeTagInput[];
+  takeProfitPrice?: number | null;
+  timeframe?: string | null;
 };
 
 export type UpdateManualTradeInput = CreateManualTradeInput & {
@@ -67,6 +75,7 @@ export type TradeTagSummary = Pick<TagRow, 'id' | 'name' | 'type'>;
 
 export type TradeSummary = TradeRow & {
   asset: Pick<AssetRow, 'asset_class' | 'id' | 'symbol'> | null;
+  psychology: TradePsychologyRow | null;
   strategy: Pick<StrategyRow, 'id' | 'name'> | null;
   tags: TradeTagSummary[];
 };
@@ -119,12 +128,17 @@ export async function createManualTrade(input: CreateManualTradeInput): Promise<
     exit_price: input.exitPrice ?? null,
     fees: input.fees ?? 0,
     gross_pnl: realizedPnl?.grossPnl ?? null,
+    htf_timeframe: input.htfTimeframe ?? null,
     net_pnl: realizedPnl?.netPnl ?? null,
     notes: normalizeOptionalText(input.notes),
     opened_at: input.openedAt,
+    planned_rr: input.plannedRr ?? null,
     quantity: input.quantity,
+    stop_loss_price: input.stopLossPrice ?? null,
     strategy_id: strategy.id,
     status: input.closedAt && input.exitPrice ? 'closed' : 'open',
+    take_profit_price: input.takeProfitPrice ?? null,
+    timeframe: input.timeframe ?? null,
     user_id: userId
   };
 
@@ -139,6 +153,10 @@ export async function createManualTrade(input: CreateManualTradeInput): Promise<
     tradeId: data.id,
     userId
   });
+
+  if (input.psychology && hasPsychologyData(input.psychology)) {
+    await upsertTradePsychology(data.id, input.psychology);
+  }
 
   return data;
 }
@@ -174,12 +192,17 @@ export async function updateManualTrade(input: UpdateManualTradeInput): Promise<
     exit_price: input.exitPrice ?? null,
     fees: input.fees ?? 0,
     gross_pnl: realizedPnl?.grossPnl ?? null,
+    htf_timeframe: input.htfTimeframe ?? null,
     net_pnl: realizedPnl?.netPnl ?? null,
     notes: normalizeOptionalText(input.notes),
     opened_at: input.openedAt,
+    planned_rr: input.plannedRr ?? null,
     quantity: input.quantity,
+    stop_loss_price: input.stopLossPrice ?? null,
     strategy_id: strategy.id,
     status: input.closedAt && input.exitPrice ? 'closed' : 'open',
+    take_profit_price: input.takeProfitPrice ?? null,
+    timeframe: input.timeframe ?? null,
     updated_at: new Date().toISOString()
   };
 
@@ -200,6 +223,10 @@ export async function updateManualTrade(input: UpdateManualTradeInput): Promise<
     tradeId: data.id,
     userId
   });
+
+  if (input.psychology && hasPsychologyData(input.psychology)) {
+    await upsertTradePsychology(data.id, input.psychology);
+  }
 
   return data;
 }
@@ -308,10 +335,12 @@ export async function listTradeSummaries(options: ListTradesOptions = {}): Promi
   const strategiesById = await getStrategiesById(
     trades.map((trade) => trade.strategy_id).filter((strategyId): strategyId is string => strategyId !== null)
   );
+  const psychologiesByTradeId = await listTradePsychologies(trades.map((trade) => trade.id));
 
   return trades.map((trade) => ({
     ...trade,
     asset: assetsById.get(trade.asset_id) ?? null,
+    psychology: psychologiesByTradeId.get(trade.id) ?? null,
     strategy: trade.strategy_id ? (strategiesById.get(trade.strategy_id) ?? null) : null,
     tags: tagsByTradeId.get(trade.id) ?? []
   }));
@@ -347,6 +376,7 @@ export async function getTrade(tradeId: string): Promise<TradeSummary> {
   return {
     ...trade,
     asset: asset ?? null,
+    psychology: await getTradePsychology(trade.id),
     strategy: trade.strategy_id ? ((await getStrategiesById([trade.strategy_id])).get(trade.strategy_id) ?? null) : null,
     tags: (await getTagsByTradeId([trade.id])).get(trade.id) ?? []
   };
@@ -887,4 +917,8 @@ function normalizeRuleList(rules: string[] | null | undefined) {
 
 function toTradeServiceError(message: string, error: { message: string }) {
   return new TradeServiceError(`${message} ${error.message}`);
+}
+
+function hasPsychologyData(input: TradePsychologyInput): boolean {
+  return Object.values(input).some((value) => value !== undefined);
 }
