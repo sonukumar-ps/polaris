@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { AppShell, Card, LoadingState, SectionHeading, useAppTheme } from '@/lib/ui';
 import { listTradeSummaries, useAccountScope } from '@/lib/trades';
+import { seedDemoTrades } from '@/lib/trades/seed-trades';
 import {
   analyzePostLossBehaviour,
   calculateConvictionCorrelation,
@@ -17,6 +18,8 @@ export default function PsychologyScreen() {
   const [trades, setTrades] = useState<TradeSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isSeeding, setIsSeeding] = useState(false);
+  const [seedCount, setSeedCount] = useState(0);
 
   useEffect(() => {
     let isActive = true;
@@ -71,6 +74,34 @@ export default function PsychologyScreen() {
             Start adding psychology data to your trades to unlock behavioural insights. Tap the "How did you trade?"
             section when logging a trade.
           </Text>
+          <Pressable
+            disabled={isSeeding}
+            onPress={async () => {
+              setIsSeeding(true);
+              try {
+                const count = await seedDemoTrades();
+                setSeedCount(count);
+                const loaded = await listTradeSummaries({
+                  accountIds: selectedAccountIds ?? undefined,
+                  limit: 200
+                });
+                setTrades(loaded);
+              } catch (err) {
+                setError(err instanceof Error ? err.message : 'Could not seed demo trades.');
+              } finally {
+                setIsSeeding(false);
+              }
+            }}
+            style={({ pressed }) => [
+              styles.seedButton,
+              { backgroundColor: theme.mutedSurface, borderColor: theme.border },
+              pressed && styles.pressed
+            ]}
+          >
+            <Text style={[styles.seedButtonText, { color: theme.accent }]}>
+              {isSeeding ? 'Seeding 20 trades...' : seedCount > 0 ? `✓ Seeded ${seedCount} trades` : '🧪 Load 20 demo trades with psychology data'}
+            </Text>
+          </Pressable>
         </Card>
       ) : null}
 
@@ -262,5 +293,8 @@ const styles = StyleSheet.create({
   postLossMetrics: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   postLossMetric: { flex: 1, minWidth: 130, gap: 4, borderRadius: 8, padding: 10 },
   postLossMetricLabel: { fontSize: 11, fontWeight: '800' },
-  postLossMetricValue: { fontSize: 17, fontWeight: '800' }
+  postLossMetricValue: { fontSize: 17, fontWeight: '800' },
+  seedButton: { alignItems: 'center', borderRadius: 8, borderWidth: 1, marginTop: 12, paddingHorizontal: 14, paddingVertical: 10 },
+  seedButtonText: { fontSize: 13, fontWeight: '800' },
+  pressed: { opacity: 0.72 }
 });
