@@ -418,6 +418,9 @@ function TradeReadOnlyCard({ onEdit, trade }: { onEdit: () => void; trade: Trade
         <Metric label="Fees" value={formatCurrency(trade.fees)} />
         <Metric label="Gross P&L" value={trade.gross_pnl !== null ? formatCurrency(trade.gross_pnl) : 'Open'} />
         <Metric label="Closed" value={trade.closed_at ? formatDate(trade.closed_at) : 'Open'} />
+        {trade.planned_rr !== null ? <Metric label="Planned R:R" value={String(trade.planned_rr)} /> : null}
+        {trade.stop_loss_price !== null ? <Metric label="Stop loss" value={formatNumber(trade.stop_loss_price)} /> : null}
+        {trade.take_profit_price !== null ? <Metric label="Take profit" value={formatNumber(trade.take_profit_price)} /> : null}
       </View>
 
       {trade.tags.length > 0 ? (
@@ -441,7 +444,79 @@ function TradeReadOnlyCard({ onEdit, trade }: { onEdit: () => void; trade: Trade
       ) : null}
 
       {trade.psychology ? <PsychologyCard trade={trade} /> : null}
+
+      {hasOrderManagementData(trade) ? <OrderManagementCard trade={trade} /> : null}
     </>
+  );
+}
+
+function OrderManagementCard({ trade }: { trade: TradeSummary }) {
+  const theme = useAppTheme();
+
+  const orderTypeLabel: Record<string, string> = {
+    market: 'Market',
+    pending_buy_stop: 'Buy Stop',
+    pending_sell_stop: 'Sell Stop'
+  };
+  const mgmtLabel: Record<string, string> = {
+    advanced: 'Advanced',
+    basic: 'Basic',
+    intermediate: 'Intermediate'
+  };
+
+  return (
+    <View style={[styles.dividedSection, { borderColor: theme.border }]}>
+      <Text style={[styles.sectionTitle, { color: theme.text }]}>Order management</Text>
+      <View style={styles.psychGrid}>
+        {trade.entry_order_type ? (
+          <PsychChip label="Order type" value={orderTypeLabel[trade.entry_order_type] ?? trade.entry_order_type} />
+        ) : null}
+        {trade.order_triggered !== null ? (
+          <PsychChip
+            label="Triggered"
+            tone={trade.order_triggered ? 'positive' : undefined}
+            value={trade.order_triggered ? 'Yes' : 'No'}
+          />
+        ) : null}
+        {trade.order_expired ? (
+          <PsychChip label="Expired" tone="negative" value="Yes" />
+        ) : null}
+        {trade.management_option ? (
+          <PsychChip label="Management" value={mgmtLabel[trade.management_option] ?? trade.management_option} />
+        ) : null}
+        {trade.is_bulletproof ? (
+          <PsychChip label="Bulletproof" tone="positive" value="Yes" />
+        ) : null}
+        {trade.trailing_stop_count !== null && trade.trailing_stop_count > 0 ? (
+          <PsychChip label="SL trails" value={String(trade.trailing_stop_count)} />
+        ) : null}
+        {trade.intended_entry_price !== null ? (
+          <PsychChip label="Intended entry" value={formatNumber(trade.intended_entry_price)} />
+        ) : null}
+        {trade.slippage_pips !== null ? (
+          <PsychChip label="Slippage" value={`${trade.slippage_pips} pips`} />
+        ) : null}
+        {trade.rr_to_last_swing !== null ? (
+          <PsychChip label="R:R last swing" value={String(trade.rr_to_last_swing)} />
+        ) : null}
+        {trade.rr_to_next_sr !== null ? (
+          <PsychChip label="R:R next S/R" value={String(trade.rr_to_next_sr)} />
+        ) : null}
+      </View>
+    </View>
+  );
+}
+
+function hasOrderManagementData(trade: TradeSummary): boolean {
+  return !!(
+    trade.entry_order_type ||
+    trade.management_option ||
+    trade.is_bulletproof ||
+    trade.intended_entry_price !== null ||
+    trade.slippage_pips !== null ||
+    trade.rr_to_last_swing !== null ||
+    trade.rr_to_next_sr !== null ||
+    (trade.trailing_stop_count !== null && trade.trailing_stop_count > 0)
   );
 }
 

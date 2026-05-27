@@ -3,6 +3,7 @@ export * from './account-scope';
 export * from './backtesting';
 export * from './checklists';
 export * from './insights';
+export * from './orders';
 export * from './pnl';
 export * from './risk';
 export * from './service';

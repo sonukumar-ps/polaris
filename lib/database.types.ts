@@ -5,6 +5,7 @@ export type Json =
   | null
   | { [key: string]: Json | undefined }
   | Json[]
+
 export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
@@ -186,6 +187,54 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      stop_loss_history: {
+        Row: {
+          created_at: string
+          id: string
+          moved_at: string
+          new_price: number
+          old_price: number
+          reason: string | null
+          trade_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          moved_at?: string
+          new_price: number
+          old_price: number
+          reason?: string | null
+          trade_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          moved_at?: string
+          new_price?: number
+          old_price?: number
+          reason?: string | null
+          trade_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stop_loss_history_trade_id_fkey"
+            columns: ["trade_id"]
+            isOneToOne: false
+            referencedRelation: "trades"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stop_loss_history_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       strategies: {
         Row: {
@@ -571,81 +620,120 @@ export type Database = {
         Row: {
           account_id: string
           asset_id: string
+          checklist_id: string | null
           closed_at: string | null
           created_at: string
           direction: Database["public"]["Enums"]["trade_direction"]
+          entry_order_type: string | null
           entry_price: number
           exit_price: number | null
           fees: number
           gross_pnl: number | null
           htf_timeframe: string | null
           id: string
+          intended_entry_price: number | null
+          is_bulletproof: boolean | null
+          management_option: string | null
           net_pnl: number | null
           notes: string | null
           opened_at: string
+          order_expired: boolean | null
+          order_expiry_at: string | null
+          order_placed_at: string | null
+          order_triggered: boolean | null
           planned_rr: number | null
           quantity: number
           r_multiple: number | null
           risk_amount: number | null
+          rr_to_last_swing: number | null
+          rr_to_next_sr: number | null
+          slippage_pips: number | null
           status: Database["public"]["Enums"]["trade_status"]
           stop_loss_price: number | null
           strategy_id: string | null
           take_profit_price: number | null
           timeframe: string | null
+          trailing_stop_count: number | null
           updated_at: string
           user_id: string
         }
         Insert: {
           account_id: string
           asset_id: string
+          checklist_id?: string | null
           closed_at?: string | null
           created_at?: string
           direction: Database["public"]["Enums"]["trade_direction"]
+          entry_order_type?: string | null
           entry_price: number
           exit_price?: number | null
           fees?: number
           gross_pnl?: number | null
           htf_timeframe?: string | null
           id?: string
+          intended_entry_price?: number | null
+          is_bulletproof?: boolean | null
+          management_option?: string | null
           net_pnl?: number | null
           notes?: string | null
           opened_at: string
+          order_expired?: boolean | null
+          order_expiry_at?: string | null
+          order_placed_at?: string | null
+          order_triggered?: boolean | null
           planned_rr?: number | null
           quantity: number
           r_multiple?: number | null
           risk_amount?: number | null
+          rr_to_last_swing?: number | null
+          rr_to_next_sr?: number | null
+          slippage_pips?: number | null
           status?: Database["public"]["Enums"]["trade_status"]
           stop_loss_price?: number | null
           strategy_id?: string | null
           take_profit_price?: number | null
           timeframe?: string | null
+          trailing_stop_count?: number | null
           updated_at?: string
           user_id: string
         }
         Update: {
           account_id?: string
           asset_id?: string
+          checklist_id?: string | null
           closed_at?: string | null
           created_at?: string
           direction?: Database["public"]["Enums"]["trade_direction"]
+          entry_order_type?: string | null
           entry_price?: number
           exit_price?: number | null
           fees?: number
           gross_pnl?: number | null
           htf_timeframe?: string | null
           id?: string
+          intended_entry_price?: number | null
+          is_bulletproof?: boolean | null
+          management_option?: string | null
           net_pnl?: number | null
           notes?: string | null
           opened_at?: string
+          order_expired?: boolean | null
+          order_expiry_at?: string | null
+          order_placed_at?: string | null
+          order_triggered?: boolean | null
           planned_rr?: number | null
           quantity?: number
           r_multiple?: number | null
           risk_amount?: number | null
+          rr_to_last_swing?: number | null
+          rr_to_next_sr?: number | null
+          slippage_pips?: number | null
           status?: Database["public"]["Enums"]["trade_status"]
           stop_loss_price?: number | null
           strategy_id?: string | null
           take_profit_price?: number | null
           timeframe?: string | null
+          trailing_stop_count?: number | null
           updated_at?: string
           user_id?: string
         }
@@ -662,6 +750,13 @@ export type Database = {
             columns: ["asset_id"]
             isOneToOne: false
             referencedRelation: "assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trades_checklist_id_fkey"
+            columns: ["checklist_id"]
+            isOneToOne: false
+            referencedRelation: "strategy_checklists"
             referencedColumns: ["id"]
           },
           {
@@ -706,8 +801,11 @@ export type Database = {
     }
   }
 }
+
 type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
+
 type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
+
 export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
@@ -736,6 +834,7 @@ export type Tables<
       ? R
       : never
     : never
+
 export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
@@ -760,6 +859,7 @@ export type TablesInsert<
       ? I
       : never
     : never
+
 export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
@@ -784,6 +884,7 @@ export type TablesUpdate<
       ? U
       : never
     : never
+
 export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
@@ -800,6 +901,7 @@ export type Enums<
   : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
     ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
     : never
+
 export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
@@ -816,6 +918,7 @@ export type CompositeTypes<
   : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
     ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
     : never
+
 export const Constants = {
   graphql_public: {
     Enums: {},

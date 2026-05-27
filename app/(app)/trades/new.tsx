@@ -34,6 +34,7 @@ import type {
   TradePsychologyInput,
   TradingSession
 } from '@/lib/trades/backtesting/psychology.types';
+import type { EntryOrderType, ManagementOption } from '@/lib/trades/orders/order.types';
 
 type Direction = 'long' | 'short';
 
@@ -58,6 +59,19 @@ type PsychDraft = {
   stopLossPrice: string;
   takeProfitPrice: string;
   timeframe: string;
+};
+
+type OrderDraft = {
+  entryOrderType: EntryOrderType | '';
+  intendedEntryPrice: string;
+  isBulletproof: boolean | null;
+  managementOption: ManagementOption | '';
+  orderExpiryAt: string;
+  orderPlacedAt: string;
+  orderTriggered: boolean | null;
+  rrToLastSwing: string;
+  rrToNextSr: string;
+  slippagePips: string;
 };
 
 type TradeDraft = {
@@ -117,6 +131,19 @@ const emptyPsychDraft: PsychDraft = {
   stopLossPrice: '',
   takeProfitPrice: '',
   timeframe: ''
+};
+
+const emptyOrderDraft: OrderDraft = {
+  entryOrderType: '',
+  intendedEntryPrice: '',
+  isBulletproof: null,
+  managementOption: '',
+  orderExpiryAt: '',
+  orderPlacedAt: '',
+  orderTriggered: null,
+  rrToLastSwing: '',
+  rrToNextSr: '',
+  slippagePips: ''
 };
 
 const emptyStrategyDraft: StrategyDraft = {
@@ -209,7 +236,9 @@ export default function NewTradeScreen() {
   const params = useLocalSearchParams<{ entryPrice?: string; size?: string }>();
   const [draft, setDraft] = useState<TradeDraft>(() => createInitialDraft(params));
   const [psychDraft, setPsychDraft] = useState<PsychDraft>(emptyPsychDraft);
+  const [orderDraft, setOrderDraft] = useState<OrderDraft>(emptyOrderDraft);
   const [isPsychExpanded, setIsPsychExpanded] = useState(false);
+  const [isOrderExpanded, setIsOrderExpanded] = useState(false);
   const [accounts, setAccounts] = useState<TradingAccount[]>([]);
   const [strategies, setStrategies] = useState<TradingStrategy[]>([]);
   const [strategyDraft, setStrategyDraft] = useState<StrategyDraft>(emptyStrategyDraft);
@@ -369,6 +398,10 @@ export default function NewTradeScreen() {
     setPsychDraft((current) => ({ ...current, [key]: value }));
   }
 
+  function updateOrderField<Key extends keyof OrderDraft>(key: Key, value: OrderDraft[Key]) {
+    setOrderDraft((current) => ({ ...current, [key]: value }));
+  }
+
   async function handleSaveTrade() {
     const nextErrors = validateDraft(draft);
     setErrors(nextErrors);
@@ -385,15 +418,25 @@ export default function NewTradeScreen() {
         accountId: draft.accountId,
         closedAt: draft.closedAt ? toDateTime(draft.closedAt) : null,
         direction: draft.direction,
+        entryOrderType: orderDraft.entryOrderType || null,
         entryPrice: Number(draft.entryPrice),
         exitPrice: draft.exitPrice ? Number(draft.exitPrice) : null,
         fees: Number(draft.fees || '0'),
         htfTimeframe: psychDraft.htfTimeframe || null,
+        intendedEntryPrice: orderDraft.intendedEntryPrice ? Number(orderDraft.intendedEntryPrice) : null,
+        isBulletproof: orderDraft.isBulletproof,
+        managementOption: orderDraft.managementOption || null,
         notes: draft.notes,
         openedAt: toDateTime(draft.openedAt),
+        orderExpiryAt: orderDraft.orderExpiryAt ? toDateTime(orderDraft.orderExpiryAt) : null,
+        orderPlacedAt: orderDraft.orderPlacedAt ? toDateTime(orderDraft.orderPlacedAt) : null,
+        orderTriggered: orderDraft.orderTriggered,
         plannedRr: psychDraft.plannedRr ? Number(psychDraft.plannedRr) : null,
         psychology: buildPsychInput(psychDraft),
         quantity: Number(draft.size),
+        rrToLastSwing: orderDraft.rrToLastSwing ? Number(orderDraft.rrToLastSwing) : null,
+        rrToNextSr: orderDraft.rrToNextSr ? Number(orderDraft.rrToNextSr) : null,
+        slippagePips: orderDraft.slippagePips ? Number(orderDraft.slippagePips) : null,
         stopLossPrice: psychDraft.stopLossPrice ? Number(psychDraft.stopLossPrice) : null,
         strategyId: draft.strategyId,
         symbol: draft.symbol,
@@ -612,6 +655,13 @@ export default function NewTradeScreen() {
               isExpanded={isPsychExpanded}
               onToggle={() => setIsPsychExpanded((v) => !v)}
               onUpdate={updatePsychField}
+            />
+
+            <OrderManagementSection
+              draft={orderDraft}
+              isExpanded={isOrderExpanded}
+              onToggle={() => setIsOrderExpanded((v) => !v)}
+              onUpdate={updateOrderField}
             />
 
             {submitError ? <Text style={[styles.errorText, { color: theme.danger }]}>{submitError}</Text> : null}
@@ -1063,6 +1113,131 @@ function PsychologySection({
               <TextField label="Lesson" multiline onChangeText={(v) => onUpdate('lesson', v)} placeholder="What did this trade teach you?" value={draft.lesson} />
             </>
           ) : null}
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
+function countOrderFields(o: OrderDraft): number {
+  return [
+    o.entryOrderType,
+    o.intendedEntryPrice,
+    o.managementOption,
+    o.orderPlacedAt,
+    o.orderExpiryAt,
+    o.orderTriggered !== null ? 'y' : '',
+    o.isBulletproof !== null ? 'y' : '',
+    o.rrToLastSwing,
+    o.rrToNextSr,
+    o.slippagePips
+  ].filter(Boolean).length;
+}
+
+function OrderManagementSection({
+  draft,
+  isExpanded,
+  onToggle,
+  onUpdate
+}: {
+  draft: OrderDraft;
+  isExpanded: boolean;
+  onToggle: () => void;
+  onUpdate: <K extends keyof OrderDraft>(key: K, value: OrderDraft[K]) => void;
+}) {
+  const theme = useAppTheme();
+  const filled = countOrderFields(draft);
+  const total = 10;
+
+  return (
+    <View style={styles.formSection}>
+      <Pressable onPress={onToggle} style={styles.sectionHeaderRow}>
+        <Text style={[styles.sectionTitle, { color: theme.text }]}>
+          Order management{filled > 0 ? ` (${filled}/${total} filled)` : ''}
+        </Text>
+        <Text style={[styles.inlineActionText, { color: theme.muted }]}>{isExpanded ? '▲' : '▼'}</Text>
+      </Pressable>
+
+      {isExpanded ? (
+        <View style={styles.psychFields}>
+          <Text style={[styles.psychSubhead, { color: theme.muted }]}>Order placement</Text>
+
+          <ChipSelector
+            label="Entry order type"
+            labels={{ market: 'Market', pending_buy_stop: 'Buy Stop', pending_sell_stop: 'Sell Stop' }}
+            onSelect={(v) => onUpdate('entryOrderType', v as EntryOrderType | '')}
+            options={['pending_buy_stop', 'pending_sell_stop', 'market']}
+            selected={draft.entryOrderType}
+          />
+          <View style={styles.fieldRow}>
+            <TextField
+              inputMode="decimal"
+              label="Intended entry price"
+              onChangeText={(v) => onUpdate('intendedEntryPrice', v)}
+              placeholder="1.2650"
+              value={draft.intendedEntryPrice}
+            />
+            <TextField
+              inputMode="decimal"
+              label="Slippage (pips)"
+              onChangeText={(v) => onUpdate('slippagePips', v)}
+              placeholder="0.3"
+              value={draft.slippagePips}
+            />
+          </View>
+          <View style={styles.fieldRow}>
+            <TextField
+              label="Order placed"
+              onChangeText={(v) => onUpdate('orderPlacedAt', v)}
+              placeholder="2026-05-27"
+              value={draft.orderPlacedAt}
+            />
+            <TextField
+              label="Order expiry"
+              onChangeText={(v) => onUpdate('orderExpiryAt', v)}
+              placeholder="2026-05-28"
+              value={draft.orderExpiryAt}
+            />
+          </View>
+          <YesNoToggle
+            label="Order triggered?"
+            onSelect={(v) => onUpdate('orderTriggered', v)}
+            selected={draft.orderTriggered}
+          />
+
+          <Text style={[styles.psychSubhead, { color: theme.muted }]}>Trade management</Text>
+
+          <ChipSelector
+            label="Management option"
+            labels={{ advanced: 'Advanced', basic: 'Basic', intermediate: 'Intermediate' }}
+            onSelect={(v) => onUpdate('managementOption', v as ManagementOption | '')}
+            options={['basic', 'intermediate', 'advanced']}
+            selected={draft.managementOption}
+          />
+          <YesNoToggle
+            label="Bulletproof (SL at breakeven+)?"
+            onSelect={(v) => onUpdate('isBulletproof', v)}
+            selected={draft.isBulletproof}
+          />
+
+          <Text style={[styles.psychSubhead, { color: theme.muted }]}>R:R targets</Text>
+
+          <View style={styles.fieldRow}>
+            <TextField
+              inputMode="decimal"
+              label="R:R to last swing"
+              onChangeText={(v) => onUpdate('rrToLastSwing', v)}
+              placeholder="1.5"
+              value={draft.rrToLastSwing}
+            />
+            <TextField
+              inputMode="decimal"
+              label="R:R to next S/R"
+              onChangeText={(v) => onUpdate('rrToNextSr', v)}
+              placeholder="2.0"
+              value={draft.rrToNextSr}
+            />
+          </View>
         </View>
       ) : null}
     </View>

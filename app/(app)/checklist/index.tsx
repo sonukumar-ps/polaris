@@ -23,6 +23,7 @@ import {
   listStrategies,
   upsertChecklist
 } from '@/lib/trades';
+import { seedDemoChecklists } from '@/lib/trades/checklists/seed-demo';
 import type {
   ChecklistDecision,
   DecelerationEvidence,
@@ -112,6 +113,7 @@ export default function ChecklistScreen() {
   const [isSaving, setIsSaving] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [openDropdown, setOpenDropdown] = useState<'strategy' | 'symbol' | null>(null);
+  const [isSeeding, setIsSeeding] = useState(false);
 
   // Collapsible section states
   const [isCriticalOpen, setIsCriticalOpen] = useState(true);
@@ -641,9 +643,39 @@ export default function ChecklistScreen() {
           ) : null}
 
           {!isLoadingChecklists && todaysChecklists.length === 0 ? (
-            <Text style={[styles.emptyBody, { color: theme.muted }]}>
-              No checklists for this date yet. Start by selecting a pair above.
-            </Text>
+            <View style={{ gap: 10 }}>
+              <Text style={[styles.emptyBody, { color: theme.muted }]}>
+                No checklists for this date yet. Start by selecting a pair above.
+              </Text>
+              {selectedStrategyId ? (
+                <Pressable
+                  disabled={isSeeding}
+                  onPress={async () => {
+                    setIsSeeding(true);
+                    try {
+                      await seedDemoChecklists(selectedStrategyId, checklistDate);
+                      const refreshed = await listChecklistsByDate(checklistDate, {
+                        strategyId: selectedStrategyId
+                      });
+                      setTodaysChecklists(refreshed);
+                    } catch {
+                      // silent
+                    } finally {
+                      setIsSeeding(false);
+                    }
+                  }}
+                  style={({ pressed }) => [
+                    styles.seedButton,
+                    { backgroundColor: theme.mutedSurface, borderColor: theme.border },
+                    pressed && styles.pressed
+                  ]}
+                >
+                  <Text style={[styles.seedButtonText, { color: theme.accent }]}>
+                    {isSeeding ? 'Seeding...' : '🧪 Load demo data'}
+                  </Text>
+                </Pressable>
+              ) : null}
+            </View>
           ) : null}
 
           {qualifiedCount > 0 ? (
@@ -1218,6 +1250,17 @@ const styles = StyleSheet.create({
   pairStatusText: {
     color: '#FFFFFF',
     fontSize: 11,
+    fontWeight: '800'
+  },
+  seedButton: {
+    alignItems: 'center',
+    borderRadius: 8,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 10
+  },
+  seedButtonText: {
+    fontSize: 13,
     fontWeight: '800'
   }
 });
