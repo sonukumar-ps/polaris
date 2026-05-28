@@ -22,7 +22,7 @@ import {
   TextField,
   useAppTheme
 } from '@/lib/ui';
-import { calculateRealizedPnl, createManualTrade, createStrategy, listAccounts, listStrategies } from '@/lib/trades';
+import { calculateRealizedPnl, createManualTrade, createStrategy, linkChecklistToTrade, listAccounts, listStrategies } from '@/lib/trades';
 import type { TradingAccount, TradingStrategy } from '@/lib/trades';
 import type {
   EmotionalState,
@@ -233,12 +233,24 @@ function calculatePreview(draft: TradeDraft) {
 export default function NewTradeScreen() {
   const router = useRouter();
   const theme = useAppTheme();
-  const params = useLocalSearchParams<{ entryPrice?: string; size?: string }>();
+  const params = useLocalSearchParams<{
+    checklistId?: string;
+    direction?: string;
+    entryPrice?: string;
+    notes?: string;
+    plannedRr?: string;
+    rrToLastSwing?: string;
+    rrToNextSr?: string;
+    size?: string;
+    strategyId?: string;
+    symbol?: string;
+  }>();
   const [draft, setDraft] = useState<TradeDraft>(() => createInitialDraft(params));
-  const [psychDraft, setPsychDraft] = useState<PsychDraft>(emptyPsychDraft);
-  const [orderDraft, setOrderDraft] = useState<OrderDraft>(emptyOrderDraft);
+  const [psychDraft, setPsychDraft] = useState<PsychDraft>(() => createInitialPsychDraft(params));
+  const [orderDraft, setOrderDraft] = useState<OrderDraft>(() => createInitialOrderDraft(params));
   const [isPsychExpanded, setIsPsychExpanded] = useState(false);
-  const [isOrderExpanded, setIsOrderExpanded] = useState(false);
+  const [isOrderExpanded, setIsOrderExpanded] = useState(Boolean(params.checklistId));
+  const checklistId = typeof params.checklistId === 'string' ? params.checklistId : null;
   const [accounts, setAccounts] = useState<TradingAccount[]>([]);
   const [strategies, setStrategies] = useState<TradingStrategy[]>([]);
   const [strategyDraft, setStrategyDraft] = useState<StrategyDraft>(emptyStrategyDraft);
@@ -416,6 +428,7 @@ export default function NewTradeScreen() {
     try {
       const savedTrade = await createManualTrade({
         accountId: draft.accountId,
+        checklistId,
         closedAt: draft.closedAt ? toDateTime(draft.closedAt) : null,
         direction: draft.direction,
         entryOrderType: orderDraft.entryOrderType || null,
@@ -445,6 +458,15 @@ export default function NewTradeScreen() {
         timeframe: psychDraft.timeframe || null
       });
 
+      // If this trade was spawned from a checklist, link them bidirectionally
+      if (checklistId) {
+        try {
+          await linkChecklistToTrade(checklistId, savedTrade.id);
+        } catch {
+          // Non-fatal — the trade is saved, the link just didn't update
+        }
+      }
+
       router.replace(`/trades/${savedTrade.id}` as Href);
     } catch (error) {
       setSubmitError(error instanceof Error ? error.message : 'Could not save trade.');
@@ -461,12 +483,26 @@ export default function NewTradeScreen() {
       <AppShell activeRoute="add-trade">
         <View style={styles.headerRow}>
           <SectionHeading
-            eyebrow="New entry"
-            subtitle="Capture execution, context, and emotional state without clutter."
-            title="Add trade"
+            eyebrow={checklistId ? 'From checklist' : 'New entry'}
+            subtitle={
+              checklistId
+                ? 'Pre-filled from your daily checklist. Verify execution prices, then save to place the pending order.'
+                : 'Capture execution, context, and emotional state without clutter.'
+            }
+            title={checklistId ? `Place pending order${draft.symbol ? ` — ${draft.symbol}` : ''}` : 'Add trade'}
           />
           <SecondaryLinkButton href={TRADES_ROUTE}>Saved trades</SecondaryLinkButton>
         </View>
+
+        {checklistId ? (
+          <Card style={{ borderLeftWidth: 3, borderLeftColor: theme.accent }}>
+            <Text style={[styles.sectionTitle, { color: theme.accent }]}>✓ Checklist verified</Text>
+            <Text style={[styles.checklistBannerText, { color: theme.muted }]}>
+              Symbol, direction, strategy, R:R targets, and pending order setup were pre-filled from your saved
+              checklist. Adjust the actual entry/SL/TP prices to match your broker before saving.
+            </Text>
+          </Card>
+        ) : null}
 
         <View style={styles.layout}>
           <Card style={styles.formCard}>
@@ -924,23 +960,65 @@ function StrategyModal({
   );
 }
 
-function createInitialDraft(params: { entryPrice?: string | string[]; size?: string | string[] }): TradeDraft {
+function createInitialDraft(params: {
+  direction?: string | string[];
+  entryPrice?: string | string[];
+  notes?: string | string[];
+  size?: string | string[];
+  strategyId?: string | string[];
+  symbol?: string | string[];
+}): TradeDraft {
+  const directionParam = getParamValue(params.direction);
+  const direction: Direction = directionParam === 'short' ? 'short' : 'long';
+
   return {
     accountId: '',
     closedAt: '',
     customTags: '',
-    direction: 'long',
+    direction,
     emotionTag: '',
     entryPrice: getParamValue(params.entryPrice),
     exitPrice: '',
     fees: '0',
     mistakeTag: '',
-    notes: '',
+    notes: getParamValue(params.notes),
     openedAt: new Date().toISOString().slice(0, 10),
     setupTag: '',
     size: getParamValue(params.size),
-    strategyId: '',
-    symbol: ''
+    strategyId: getParamValue(params.strategyId),
+    symbol: getParamValue(params.symbol)
+  };
+}
+
+function createInitialPsychDraft(params: { plannedRr?: string | string[] }): PsychDraft {
+  return {
+    ...emptyPsychDraft,
+    plannedRr: getParamValue(params.plannedRr)
+  };
+}
+
+function createInitialOrderDraft(params: {
+  checklistId?: string | string[];
+  direction?: string | string[];
+  entryPrice?: string | string[];
+  rrToLastSwing?: string | string[];
+  rrToNextSr?: string | string[];
+}): OrderDraft {
+  const directionParam = getParamValue(params.direction);
+  const orderType =
+    directionParam === 'short' ? 'pending_sell_stop' : directionParam === 'long' ? 'pending_buy_stop' : '';
+
+  const today = new Date();
+  const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000);
+
+  return {
+    ...emptyOrderDraft,
+    entryOrderType: orderType,
+    intendedEntryPrice: getParamValue(params.entryPrice),
+    orderExpiryAt: directionParam ? tomorrow.toISOString().slice(0, 10) : '',
+    orderPlacedAt: directionParam ? today.toISOString().slice(0, 10) : '',
+    rrToLastSwing: getParamValue(params.rrToLastSwing),
+    rrToNextSr: getParamValue(params.rrToNextSr)
   };
 }
 
@@ -1584,5 +1662,10 @@ const styles = StyleSheet.create({
   chipText: {
     fontSize: 13,
     fontWeight: '800'
+  },
+  checklistBannerText: {
+    fontSize: 13,
+    lineHeight: 19,
+    marginTop: 4
   }
 });

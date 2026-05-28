@@ -1,3 +1,5 @@
+import { useRouter } from 'expo-router';
+import type { Href } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -100,6 +102,7 @@ type DropdownOption = { label: string; meta?: string; value: string };
 
 export default function ChecklistScreen() {
   const theme = useAppTheme();
+  const router = useRouter();
   const [checklistDate, setChecklistDate] = useState(
     () => new Date().toISOString().slice(0, 10)
   );
@@ -125,6 +128,39 @@ export default function ChecklistScreen() {
   const [isDecisionOpen, setIsDecisionOpen] = useState(false);
 
   const selectedStrategy = strategies.find((s) => s.id === selectedStrategyId) ?? null;
+  const currentChecklist = symbol
+    ? todaysChecklists.find(
+        (c) => c.symbol === symbol.toUpperCase() && c.strategy_id === selectedStrategyId
+      ) ?? null
+    : null;
+  const isQualified =
+    currentChecklist !== null &&
+    currentChecklist.market_condition_pass === true &&
+    currentChecklist.market_phase_pass === true &&
+    currentChecklist.sr_reaction_pass === true &&
+    currentChecklist.deceleration_pass === true;
+
+  function navigateToCreateTrade() {
+    if (!currentChecklist) return;
+    const queryParams = new URLSearchParams();
+    queryParams.set('checklistId', currentChecklist.id);
+    queryParams.set('symbol', currentChecklist.symbol);
+    queryParams.set('strategyId', currentChecklist.strategy_id);
+    if (currentChecklist.direction) queryParams.set('direction', currentChecklist.direction);
+    if (currentChecklist.rr_on_trade) {
+      queryParams.set('plannedRr', String(currentChecklist.rr_on_trade));
+    }
+    if (currentChecklist.rr_to_last_swing) {
+      queryParams.set('rrToLastSwing', String(currentChecklist.rr_to_last_swing));
+    }
+    if (currentChecklist.rr_to_next_sr) {
+      queryParams.set('rrToNextSr', String(currentChecklist.rr_to_next_sr));
+    }
+    if (currentChecklist.decision_reason) {
+      queryParams.set('notes', currentChecklist.decision_reason);
+    }
+    router.push(`/trades/new?${queryParams.toString()}` as Href);
+  }
   const strategyOptions = useMemo(
     () => strategies.map((s) => ({ label: s.name, meta: s.description ?? undefined, value: s.id })),
     [strategies]
@@ -636,6 +672,41 @@ export default function ChecklistScreen() {
           <PrimaryButton disabled={isSaving} onPress={handleSave}>
             {isSaving ? 'Saving...' : 'Save checklist'}
           </PrimaryButton>
+
+          {/* Create trade CTA — only shown when checklist is saved AND qualified AND decision=trade */}
+          {currentChecklist && isQualified && currentChecklist.decision === 'trade' ? (
+            currentChecklist.trade_id ? (
+              <Pressable
+                onPress={() => router.push(`/trades/${currentChecklist.trade_id}` as Href)}
+                style={({ pressed }) => [
+                  styles.tradeLinkCard,
+                  { backgroundColor: theme.mutedSurface, borderColor: theme.positive },
+                  pressed && styles.pressed
+                ]}
+              >
+                <Text style={[styles.tradeLinkTitle, { color: theme.positive }]}>✓ Trade linked</Text>
+                <Text style={[styles.tradeLinkSubtitle, { color: theme.muted }]}>
+                  A trade has already been created from this checklist. Tap to view.
+                </Text>
+              </Pressable>
+            ) : (
+              <Pressable
+                onPress={navigateToCreateTrade}
+                style={({ pressed }) => [
+                  styles.tradeLinkCard,
+                  { backgroundColor: theme.accent, borderColor: theme.accent },
+                  pressed && styles.pressed
+                ]}
+              >
+                <Text style={[styles.tradeLinkTitle, { color: '#FFFFFF' }]}>
+                  → Create pending order from this checklist
+                </Text>
+                <Text style={[styles.tradeLinkSubtitle, { color: '#EAF3FF' }]}>
+                  Symbol, direction, R:R targets, and order placement will be pre-filled.
+                </Text>
+              </Pressable>
+            )
+          ) : null}
         </Card>
 
         {/* Right sidebar: Today's summary */}
@@ -723,6 +794,11 @@ export default function ChecklistScreen() {
                 <Text style={[styles.pairDirection, { color: theme.muted }]}>
                   {cl.direction?.toUpperCase() ?? '—'}
                 </Text>
+                {allCritical && cl.decision === 'trade' && cl.trade_id ? (
+                  <Text style={[styles.pairLinkedIcon, { color: theme.positive }]}>✓</Text>
+                ) : allCritical && cl.decision === 'trade' ? (
+                  <Text style={[styles.pairLinkedIcon, { color: theme.accent }]}>→</Text>
+                ) : null}
                 <View style={[styles.pairStatus, { backgroundColor: statusColor }]}>
                   <Text style={styles.pairStatusText}>
                     {cl.decision ? cl.decision.charAt(0).toUpperCase() + cl.decision.slice(1) : '...'}
@@ -1283,6 +1359,24 @@ const styles = StyleSheet.create({
   },
   seedButtonText: {
     fontSize: 13,
+    fontWeight: '800'
+  },
+  tradeLinkCard: {
+    borderRadius: 10,
+    borderWidth: 1,
+    padding: 14,
+    gap: 4
+  },
+  tradeLinkTitle: {
+    fontSize: 15,
+    fontWeight: '800'
+  },
+  tradeLinkSubtitle: {
+    fontSize: 13,
+    lineHeight: 18
+  },
+  pairLinkedIcon: {
+    fontSize: 14,
     fontWeight: '800'
   }
 });
