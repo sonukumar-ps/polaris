@@ -52,6 +52,7 @@ export default function LevelsScreen() {
   const [filterSymbol, setFilterSymbol] = useState<string>('');
   const [openDropdown, setOpenDropdown] = useState<'filter' | 'add-symbol' | null>(null);
 
+  // Full reload (shows loading state). Used on mount + filter change only.
   async function reload() {
     setIsLoading(true);
     setError(null);
@@ -65,6 +66,20 @@ export default function LevelsScreen() {
       setError(err instanceof Error ? err.message : 'Could not load levels.');
     } finally {
       setIsLoading(false);
+    }
+  }
+
+  // Background refresh (no loading state). Used to silently re-sync after
+  // optimistic updates in case server-side calculations changed something.
+  async function silentRefresh() {
+    try {
+      const loaded = await listSrLevels({
+        activeOnly: true,
+        symbol: filterSymbol || undefined
+      });
+      setLevels(loaded);
+    } catch {
+      // silent — keep optimistic state
     }
   }
 
@@ -93,7 +108,7 @@ export default function LevelsScreen() {
     setError(null);
 
     try {
-      await createSrLevel({
+      const created = await createSrLevel({
         levelRole: draft.levelRole || null,
         notes: draft.notes.trim() || null,
         price: parsed,
@@ -102,9 +117,13 @@ export default function LevelsScreen() {
         type: draft.type
       });
 
+      // Optimistically insert the new level — sorting handled by groupedLevels
+      setLevels((prev) => [...prev, created].sort((a, b) => {
+        if (a.symbol !== b.symbol) return a.symbol.localeCompare(b.symbol);
+        return Number(b.price) - Number(a.price);
+      }));
       setDraft(emptyDraft);
       setShowAddModal(false);
-      await reload();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not save level.');
     } finally {
@@ -113,29 +132,46 @@ export default function LevelsScreen() {
   }
 
   async function handleTouch(id: string) {
+    // Optimistic update — bump touch count + today's date immediately
+    const today = new Date().toISOString().slice(0, 10);
+    setLevels((prev) =>
+      prev.map((l) =>
+        l.id === id
+          ? { ...l, last_touched_date: today, touch_count: l.touch_count + 1 }
+          : l
+      )
+    );
+
     try {
       await incrementLevelTouch(id);
-      await reload();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not record touch.');
+      // Re-sync on failure
+      await silentRefresh();
     }
   }
 
   async function handleDeactivate(id: string) {
+    // Optimistic remove from active list
+    setLevels((prev) => prev.filter((l) => l.id !== id));
+
     try {
       await updateSrLevel(id, { isActive: false });
-      await reload();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not deactivate level.');
+      await silentRefresh();
     }
   }
 
   async function handleDelete(id: string) {
+    // Optimistic remove
+    setLevels((prev) => prev.filter((l) => l.id !== id));
+
     try {
       await deleteSrLevel(id);
-      await reload();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not delete level.');
+      await silentRefresh();
     }
   }
 
