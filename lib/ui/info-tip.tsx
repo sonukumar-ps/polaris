@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Modal, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { GLOSSARY } from './glossary';
 import { useAppTheme } from './theme';
@@ -9,7 +9,11 @@ type InfoTipProps =
   | { definition: string; size?: 'small' | 'medium'; term?: never; title: string };
 
 /**
- * Inline (?) icon that reveals a glossary entry on tap/hover.
+ * Inline (?) icon that reveals a glossary entry on tap/click.
+ *
+ * Uses a Modal on both web and mobile so the popover always renders
+ * at the root of the DOM/view hierarchy — never clipped by parent
+ * stacking contexts, overflow, or z-index conflicts.
  *
  * Two usage modes:
  *  - <InfoTip term="flip_zone" /> — looks up from glossary
@@ -18,7 +22,6 @@ type InfoTipProps =
 export function InfoTip(props: InfoTipProps) {
   const theme = useAppTheme();
   const [isOpen, setIsOpen] = useState(false);
-  const isWeb = Platform.OS === 'web';
 
   const size = props.size ?? 'small';
   const iconSize = size === 'medium' ? 16 : 14;
@@ -37,19 +40,10 @@ export function InfoTip(props: InfoTipProps) {
     return null;
   }
 
-  // On web, also support hover via pointer events
-  const hoverHandlers = isWeb
-    ? {
-        onHoverIn: () => setIsOpen(true),
-        onHoverOut: () => setIsOpen(false)
-      }
-    : {};
-
   return (
     <View style={styles.wrapper}>
       <Pressable
         onPress={() => setIsOpen(true)}
-        {...hoverHandlers}
         style={({ pressed }) => [
           styles.iconButton,
           {
@@ -73,68 +67,47 @@ export function InfoTip(props: InfoTipProps) {
         </Text>
       </Pressable>
 
-      {/* On web, render an inline floating popover near the icon */}
-      {isWeb && isOpen ? (
-        <View
-          pointerEvents="none"
-          style={[
-            styles.webPopover,
-            {
-              backgroundColor: theme.card,
-              borderColor: theme.border,
-              shadowColor: theme.isDark ? '#000000' : '#202020'
-            }
-          ]}
-        >
-          <Text style={[styles.popoverTitle, { color: theme.text }]}>{title}</Text>
-          <Text style={[styles.popoverBody, { color: theme.muted }]}>{definition}</Text>
-        </View>
-      ) : null}
-
-      {/* On mobile, render a tap-dismissable modal */}
-      {!isWeb ? (
-        <Modal
-          animationType="fade"
-          onRequestClose={() => setIsOpen(false)}
-          transparent
-          visible={isOpen}
-        >
-          <Pressable onPress={() => setIsOpen(false)} style={styles.modalBackdrop}>
+      <Modal
+        animationType="fade"
+        onRequestClose={() => setIsOpen(false)}
+        transparent
+        visible={isOpen}
+      >
+        <Pressable onPress={() => setIsOpen(false)} style={styles.modalBackdrop}>
+          <Pressable
+            onPress={(e) => e.stopPropagation()}
+            style={[
+              styles.tipCard,
+              {
+                backgroundColor: theme.card,
+                borderColor: theme.border,
+                shadowColor: theme.isDark ? '#000000' : '#202020'
+              }
+            ]}
+          >
+            <Text style={[styles.popoverTitle, { color: theme.text }]}>{title}</Text>
+            <Text style={[styles.popoverBody, { color: theme.muted }]}>{definition}</Text>
             <Pressable
-              onPress={(e) => e.stopPropagation()}
-              style={[
-                styles.mobileCard,
+              onPress={() => setIsOpen(false)}
+              style={({ pressed }) => [
+                styles.closeButton,
                 {
-                  backgroundColor: theme.card,
-                  borderColor: theme.border
+                  backgroundColor: theme.accent,
+                  opacity: pressed ? 0.72 : 1
                 }
               ]}
             >
-              <Text style={[styles.popoverTitle, { color: theme.text }]}>{title}</Text>
-              <Text style={[styles.popoverBody, { color: theme.muted }]}>{definition}</Text>
-              <Pressable
-                onPress={() => setIsOpen(false)}
-                style={({ pressed }) => [
-                  styles.closeButton,
-                  {
-                    backgroundColor: theme.accent,
-                    opacity: pressed ? 0.72 : 1
-                  }
-                ]}
-              >
-                <Text style={styles.closeButtonText}>Got it</Text>
-              </Pressable>
+              <Text style={styles.closeButtonText}>Got it</Text>
             </Pressable>
           </Pressable>
-        </Modal>
-      ) : null}
+        </Pressable>
+      </Modal>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   wrapper: {
-    position: 'relative',
     alignItems: 'center',
     justifyContent: 'center'
   },
@@ -148,49 +121,38 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     lineHeight: 14
   },
-  webPopover: {
-    position: 'absolute',
-    top: 22,
-    left: -10,
-    width: 280,
-    borderRadius: 8,
-    borderWidth: 1,
-    padding: 12,
-    gap: 6,
-    zIndex: 100,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.18,
-    shadowRadius: 18,
-    elevation: 8
-  },
   popoverTitle: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '800'
   },
   popoverBody: {
-    fontSize: 13,
-    lineHeight: 19
+    fontSize: 14,
+    lineHeight: 21
   },
   modalBackdrop: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: 'rgba(0,0,0,0.55)',
     padding: 24
   },
-  mobileCard: {
+  tipCard: {
     width: '100%',
-    maxWidth: 360,
-    borderRadius: 12,
+    maxWidth: 380,
+    borderRadius: 14,
     borderWidth: 1,
-    padding: 16,
-    gap: 8
+    padding: 18,
+    gap: 10,
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.25,
+    shadowRadius: 28,
+    elevation: 12
   },
   closeButton: {
     alignItems: 'center',
     borderRadius: 8,
     paddingVertical: 10,
-    marginTop: 6
+    marginTop: 4
   },
   closeButtonText: {
     color: '#FFFFFF',
