@@ -7,5 +7,6 @@ export * from './insights';
 export * from './orders';
 export * from './pnl';
 export * from './risk';
+export * from './risk-limits';
 export * from './service';
 export * from './sr-levels';

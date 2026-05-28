@@ -18,6 +18,7 @@ import {
 
 import { useAccountScope } from '@/lib/trades';
 
+import { DrawdownBanner } from './drawdown-banner';
 import { useAppTheme } from './theme';
 import type { AppTheme } from './theme';
 
@@ -50,6 +51,7 @@ export function AppShell({
       {showSidebar ? <Sidebar activeRoute={activeRoute} theme={theme} /> : null}
       <View style={styles.appPane}>
         <AccountScopeBar theme={theme} />
+        <DrawdownBanner />
         <ScrollView
           style={styles.scroll}
           contentContainerStyle={[

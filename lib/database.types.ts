@@ -164,25 +164,40 @@ export type Database = {
       profiles: {
         Row: {
           base_currency: string
+          circuit_breaker_enabled: boolean
           created_at: string
           display_name: string | null
           id: string
+          max_daily_loss_amount: number | null
+          max_daily_loss_pct: number | null
+          max_weekly_loss_amount: number | null
+          max_weekly_loss_pct: number | null
           timezone: string
           updated_at: string
         }
         Insert: {
           base_currency?: string
+          circuit_breaker_enabled?: boolean
           created_at?: string
           display_name?: string | null
           id: string
+          max_daily_loss_amount?: number | null
+          max_daily_loss_pct?: number | null
+          max_weekly_loss_amount?: number | null
+          max_weekly_loss_pct?: number | null
           timezone?: string
           updated_at?: string
         }
         Update: {
           base_currency?: string
+          circuit_breaker_enabled?: boolean
           created_at?: string
           display_name?: string | null
           id?: string
+          max_daily_loss_amount?: number | null
+          max_daily_loss_pct?: number | null
+          max_weekly_loss_amount?: number | null
+          max_weekly_loss_pct?: number | null
           timezone?: string
           updated_at?: string
         }
