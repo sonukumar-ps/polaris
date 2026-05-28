@@ -174,7 +174,7 @@ export default function LevelsScreen() {
         </Card>
       ) : null}
 
-      {!isLoading && !error && levels.length === 0 ? (
+      {!isLoading && !error && levels.length === 0 && !filterSymbol ? (
         <Card>
           <Text style={[styles.emptyTitle, { color: theme.text }]}>No levels yet</Text>
           <Text style={[styles.emptyBody, { color: theme.muted }]}>
@@ -206,6 +206,27 @@ export default function LevelsScreen() {
             <Text style={[styles.seedButtonText, { color: theme.accent }]}>
               {isSeeding ? 'Seeding...' : '🧪 Seed 20 demo levels across major pairs'}
             </Text>
+          </Pressable>
+        </Card>
+      ) : null}
+
+      {!isLoading && !error && levels.length === 0 && filterSymbol ? (
+        <Card>
+          <Text style={[styles.emptyTitle, { color: theme.text }]}>
+            No levels for {filterSymbol}
+          </Text>
+          <Text style={[styles.emptyBody, { color: theme.muted }]}>
+            You haven't saved any S/R levels for this pair yet. Add one with the button above, or change the filter to "All pairs".
+          </Text>
+          <Pressable
+            onPress={() => setFilterSymbol('')}
+            style={({ pressed }) => [
+              styles.seedButton,
+              { backgroundColor: theme.mutedSurface, borderColor: theme.border },
+              pressed && styles.pressed
+            ]}
+          >
+            <Text style={[styles.seedButtonText, { color: theme.accent }]}>Clear filter</Text>
           </Pressable>
         </Card>
       ) : null}
