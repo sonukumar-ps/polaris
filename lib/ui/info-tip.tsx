@@ -122,12 +122,14 @@ const styles = StyleSheet.create({
     lineHeight: 14
   },
   popoverTitle: {
-    fontSize: 16,
-    fontWeight: '800'
+    fontSize: 17,
+    fontWeight: '700',
+    letterSpacing: -0.3
   },
   popoverBody: {
     fontSize: 14,
-    lineHeight: 21
+    fontWeight: '400',
+    lineHeight: 22
   },
   modalBackdrop: {
     flex: 1,
@@ -139,24 +141,25 @@ const styles = StyleSheet.create({
   tipCard: {
     width: '100%',
     maxWidth: 380,
-    borderRadius: 14,
+    borderRadius: 18,
     borderWidth: 1,
-    padding: 18,
-    gap: 10,
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.25,
-    shadowRadius: 28,
-    elevation: 12
+    padding: 22,
+    gap: 12,
+    shadowOffset: { width: 0, height: 16 },
+    shadowOpacity: 0.28,
+    shadowRadius: 36,
+    elevation: 16
   },
   closeButton: {
     alignItems: 'center',
-    borderRadius: 8,
-    paddingVertical: 10,
+    borderRadius: 12,
+    paddingVertical: 12,
     marginTop: 4
   },
   closeButtonText: {
     color: '#FFFFFF',
     fontSize: 14,
-    fontWeight: '800'
+    fontWeight: '600',
+    letterSpacing: -0.1
   }
 });

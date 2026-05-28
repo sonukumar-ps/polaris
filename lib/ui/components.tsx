@@ -76,7 +76,7 @@ export function Card({
         {
           backgroundColor: theme.card,
           borderColor: theme.border,
-          shadowColor: theme.isDark ? '#000000' : '#D8D8D2'
+          shadowColor: theme.shadow
         },
         StyleSheet.flatten(style)
       ]}
@@ -266,10 +266,10 @@ export function FadeInView({ children }: { children: ReactNode }) {
 
 function Sidebar({ activeRoute, theme }: { activeRoute: AppRoute; theme: AppTheme }) {
   return (
-    <View style={[styles.sidebar, { borderColor: theme.border }]}>
+    <View style={[styles.sidebar, { borderColor: theme.border, backgroundColor: theme.background }]}>
       <View>
         <Text style={[styles.brand, { color: theme.text }]}>Polaris</Text>
-        <Text style={[styles.brandMeta, { color: theme.muted }]}>Trade Journal</Text>
+        <Text style={[styles.brandMeta, { color: theme.muted }]}>Trading journal</Text>
       </View>
       <View style={styles.navList}>
         {navigationItems.map((item) => {
@@ -282,11 +282,19 @@ function Sidebar({ activeRoute, theme }: { activeRoute: AppRoute; theme: AppThem
               style={StyleSheet.flatten([
                 styles.navItem,
                 {
-                  backgroundColor: isActive ? theme.mutedSurface : 'transparent'
+                  backgroundColor: isActive ? theme.accentMuted : 'transparent'
                 }
               ])}
             >
-              <Text style={[styles.navText, { color: isActive ? theme.accent : theme.muted }]}>
+              <Text
+                style={[
+                  styles.navText,
+                  {
+                    color: isActive ? theme.accent : theme.textSecondary,
+                    fontWeight: isActive ? '600' : '500'
+                  }
+                ]}
+              >
                 {item.label}
               </Text>
             </Link>
@@ -395,17 +403,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     borderBottomWidth: 1,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
     zIndex: 50
   },
   scopeTitle: {
     fontSize: 15,
-    fontWeight: '800'
+    fontWeight: '600',
+    letterSpacing: -0.2
   },
   scopeMeta: {
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '500',
     marginTop: 2
   },
   scopeSelector: {
@@ -413,16 +422,16 @@ const styles = StyleSheet.create({
     zIndex: 60
   },
   scopeButton: {
-    minHeight: 48,
-    minWidth: 194,
+    minHeight: 46,
+    minWidth: 200,
     flexDirection: 'row',
     gap: 12,
     alignItems: 'center',
     justifyContent: 'space-between',
-    borderRadius: 8,
+    borderRadius: 12,
     borderWidth: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 6
+    paddingHorizontal: 14,
+    paddingVertical: 8
   },
   scopeButtonCopy: {
     flex: 1,
@@ -430,12 +439,14 @@ const styles = StyleSheet.create({
   },
   scopeButtonLabel: {
     fontSize: 10,
-    fontWeight: '800',
+    fontWeight: '600',
+    letterSpacing: 0.6,
     textTransform: 'uppercase'
   },
   scopeButtonValue: {
     fontSize: 14,
-    fontWeight: '800'
+    fontWeight: '600',
+    letterSpacing: -0.2
   },
   scopeChevron: {
     fontSize: 14,
@@ -447,53 +458,56 @@ const styles = StyleSheet.create({
     right: 0,
     width: 320,
     gap: 10,
-    borderRadius: 8,
+    borderRadius: 14,
     borderWidth: 1,
-    padding: 16,
+    padding: 18,
     shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.14,
-    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.16,
+    shadowRadius: 32,
+    elevation: 12,
     zIndex: 80
   },
   scopePanelTitle: {
     fontSize: 17,
-    fontWeight: '800'
+    fontWeight: '700',
+    letterSpacing: -0.3
   },
   scopePanelMeta: {
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '500',
     marginTop: -6
   },
   scopeError: {
     fontSize: 12,
-    fontWeight: '700'
+    fontWeight: '600'
   },
   scopeOptions: {
-    gap: 8
+    gap: 6
   },
   scopeOption: {
-    minHeight: 52,
+    minHeight: 50,
     flexDirection: 'row',
     gap: 10,
     alignItems: 'center',
     justifyContent: 'space-between',
-    borderRadius: 8,
+    borderRadius: 10,
     borderWidth: 1,
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     paddingVertical: 10
   },
   scopeOptionName: {
     fontSize: 14,
-    fontWeight: '800'
+    fontWeight: '600',
+    letterSpacing: -0.1
   },
   scopeOptionMeta: {
     fontSize: 12,
-    fontWeight: '700'
+    fontWeight: '500'
   },
   scopeOptionState: {
     fontSize: 12,
-    fontWeight: '800'
+    fontWeight: '600'
   },
   scroll: {
     flex: 1
@@ -512,67 +526,74 @@ const styles = StyleSheet.create({
     alignSelf: 'center'
   },
   sidebar: {
-    width: 248,
-    gap: 28,
+    width: 232,
+    gap: 32,
     borderRightWidth: 1,
-    padding: 24,
-    paddingTop: 36
+    padding: 22,
+    paddingTop: 40
   },
   brand: {
-    fontSize: 24,
-    fontWeight: '800'
+    fontSize: 22,
+    fontWeight: '700',
+    letterSpacing: -0.4
   },
   brandMeta: {
-    fontSize: 13,
-    fontWeight: '700',
-    marginTop: 4
+    fontSize: 12,
+    fontWeight: '500',
+    marginTop: 3
   },
   navList: {
-    gap: 6
+    gap: 2
   },
   navItem: {
-    minHeight: 40,
+    minHeight: 38,
     justifyContent: 'center',
-    borderRadius: 8,
-    paddingHorizontal: 12
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 6
   },
   navText: {
     fontSize: 14,
-    fontWeight: '700'
+    fontWeight: '500',
+    letterSpacing: -0.1
   },
   card: {
     gap: 14,
-    borderRadius: 8,
+    borderRadius: 14,
     borderWidth: 1,
-    padding: 18,
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.08,
-    shadowRadius: 24
+    padding: 20,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.06,
+    shadowRadius: 28,
+    elevation: 4
   },
   heading: {
-    gap: 8
+    gap: 6
   },
   eyebrow: {
-    fontSize: 13,
-    fontWeight: '800',
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.8,
     textTransform: 'uppercase'
   },
   title: {
-    fontSize: 36,
-    fontWeight: '800',
-    lineHeight: 42
+    fontSize: 32,
+    fontWeight: '700',
+    letterSpacing: -0.6,
+    lineHeight: 38
   },
   subtitle: {
     maxWidth: 720,
-    fontSize: 16,
-    lineHeight: 24
+    fontSize: 15,
+    fontWeight: '400',
+    lineHeight: 22
   },
   primaryButton: {
-    minHeight: 44,
+    minHeight: 46,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 8,
-    paddingHorizontal: 16
+    borderRadius: 12,
+    paddingHorizontal: 18
   },
   linkButton: {
     display: 'flex',
@@ -581,22 +602,25 @@ const styles = StyleSheet.create({
   primaryButtonText: {
     color: '#FFFFFF',
     fontSize: 15,
-    fontWeight: '800'
+    fontWeight: '600',
+    letterSpacing: -0.1
   },
   secondaryButton: {
-    minHeight: 44,
+    minHeight: 46,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 8,
+    borderRadius: 12,
     borderWidth: 1,
-    paddingHorizontal: 16
+    paddingHorizontal: 18
   },
   secondaryButtonText: {
     fontSize: 15,
-    fontWeight: '800'
+    fontWeight: '600',
+    letterSpacing: -0.1
   },
   pressed: {
-    opacity: 0.72
+    opacity: 0.72,
+    transform: [{ scale: 0.985 }]
   },
   field: {
     flex: 1,
@@ -604,36 +628,38 @@ const styles = StyleSheet.create({
     minWidth: 220
   },
   fieldLabel: {
-    fontSize: 13,
-    fontWeight: '800'
+    fontSize: 12,
+    fontWeight: '600',
+    letterSpacing: 0.1
   },
   input: {
     minHeight: 48,
-    borderRadius: 8,
+    borderRadius: 12,
     borderWidth: 1,
-    fontSize: 16,
-    paddingHorizontal: 13,
-    paddingVertical: 11
+    fontSize: 15,
+    paddingHorizontal: 14,
+    paddingVertical: 12
   },
   textArea: {
     minHeight: 104,
     textAlignVertical: 'top'
   },
   errorText: {
-    fontSize: 13,
-    fontWeight: '700'
+    fontSize: 12,
+    fontWeight: '600'
   },
   state: {
     minHeight: 150,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    borderRadius: 8,
-    padding: 18
+    borderRadius: 12,
+    padding: 20
   },
   stateTitle: {
     fontSize: 17,
-    fontWeight: '800'
+    fontWeight: '700',
+    letterSpacing: -0.2
   },
   stateText: {
     fontSize: 14,
