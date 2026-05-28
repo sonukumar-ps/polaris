@@ -1,4 +1,4 @@
-import { useColorScheme } from 'react-native';
+import { useThemeMode } from './theme-provider';
 
 export type AppTheme = {
   accent: string;
@@ -58,8 +58,8 @@ export const TYPOGRAPHY = {
 };
 
 export function useAppTheme(): AppTheme {
-  const scheme = useColorScheme();
-  const isDark = scheme === 'dark';
+  const { effectiveScheme } = useThemeMode();
+  const isDark = effectiveScheme === 'dark';
 
   return {
     accent: '#007AFF',

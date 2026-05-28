@@ -4,17 +4,19 @@ import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
 import { useAuth } from '@/lib/auth/session';
 import { AccountScopeProvider } from '@/lib/trades';
+import { useAppTheme } from '@/lib/ui';
 
 const SIGN_IN_ROUTE = '/sign-in' as Href;
 
 export default function ProtectedLayout() {
+  const theme = useAppTheme();
   const { error, isLoading, session } = useAuth();
 
   if (isLoading) {
     return (
-      <View style={styles.screen}>
-        <ActivityIndicator color="#2563EB" />
-        <Text style={styles.loadingText}>Loading your journal...</Text>
+      <View style={[styles.screen, { backgroundColor: theme.background }]}>
+        <ActivityIndicator color={theme.accent} />
+        <Text style={[styles.loadingText, { color: theme.muted }]}>Loading your journal...</Text>
       </View>
     );
   }
@@ -26,11 +28,11 @@ export default function ProtectedLayout() {
   return (
     <AccountScopeProvider>
       {error ? (
-        <View style={styles.banner}>
-          <Text style={styles.bannerText}>{error}</Text>
+        <View style={[styles.banner, { backgroundColor: theme.dangerMuted, borderBottomColor: theme.danger }]}>
+          <Text style={[styles.bannerText, { color: theme.danger }]}>{error}</Text>
         </View>
       ) : null}
-      <Stack screenOptions={{ headerShown: false }} />
+      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: theme.background } }} />
     </AccountScopeProvider>
   );
 }
@@ -40,24 +42,19 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     gap: 12,
-    justifyContent: 'center',
-    backgroundColor: '#F8FAFC'
+    justifyContent: 'center'
   },
   loadingText: {
-    color: '#475569',
     fontSize: 14,
-    fontWeight: '700'
+    fontWeight: '600'
   },
   banner: {
-    borderBottomColor: '#FCA5A5',
     borderBottomWidth: 1,
-    backgroundColor: '#FEF2F2',
     padding: 12
   },
   bannerText: {
-    color: '#991B1B',
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: '600',
     textAlign: 'center'
   }
 });

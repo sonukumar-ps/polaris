@@ -21,6 +21,7 @@ import { useAccountScope } from '@/lib/trades';
 import { DrawdownBanner } from './drawdown-banner';
 import { useAppTheme } from './theme';
 import type { AppTheme } from './theme';
+import { useThemeMode } from './theme-provider';
 
 type AppRoute = 'dashboard' | 'add-trade' | 'checklist' | 'trades' | 'risk' | 'insights' | 'levels';
 
@@ -312,6 +313,47 @@ function Sidebar({ activeRoute, theme }: { activeRoute: AppRoute; theme: AppThem
   );
 }
 
+function ThemeToggle({ theme }: { theme: AppTheme }) {
+  const { mode, setMode } = useThemeMode();
+
+  const options: { icon: string; label: string; value: 'system' | 'light' | 'dark' }[] = [
+    { icon: '☀', label: 'Light', value: 'light' },
+    { icon: '◐', label: 'Auto', value: 'system' },
+    { icon: '☾', label: 'Dark', value: 'dark' }
+  ];
+
+  return (
+    <View style={[styles.themeToggle, { backgroundColor: theme.mutedSurface, borderColor: theme.border }]}>
+      {options.map((opt) => {
+        const isSelected = mode === opt.value;
+        return (
+          <Pressable
+            key={opt.value}
+            accessibilityLabel={`${opt.label} theme`}
+            onPress={() => setMode(opt.value)}
+            style={({ pressed }) => [
+              styles.themeOption,
+              {
+                backgroundColor: isSelected ? theme.card : 'transparent'
+              },
+              pressed && styles.pressed
+            ]}
+          >
+            <Text
+              style={[
+                styles.themeOptionIcon,
+                { color: isSelected ? theme.accent : theme.muted }
+              ]}
+            >
+              {opt.icon}
+            </Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
 function AccountScopeBar({ theme }: { theme: AppTheme }) {
   const { accounts, error, isLoading, selectedAccountIds, selectedAccounts, toggleAccount } = useAccountScope();
   const [isOpen, setIsOpen] = useState(false);
@@ -328,7 +370,9 @@ function AccountScopeBar({ theme }: { theme: AppTheme }) {
         <Text style={[styles.scopeTitle, { color: theme.text }]}>Portfolio view</Text>
         <Text style={[styles.scopeMeta, { color: theme.muted }]}>Performance scope</Text>
       </View>
-      <View style={styles.scopeSelector}>
+      <View style={styles.scopeRight}>
+        <ThemeToggle theme={theme} />
+        <View style={styles.scopeSelector}>
         <Pressable
           disabled={isLoading}
           onPress={() => setIsOpen((current) => !current)}
@@ -350,7 +394,7 @@ function AccountScopeBar({ theme }: { theme: AppTheme }) {
           <Text style={[styles.scopeChevron, { color: theme.muted }]}>{isOpen ? '^' : 'v'}</Text>
         </Pressable>
         {isOpen ? (
-          <View style={[styles.scopePanel, { backgroundColor: theme.card, borderColor: theme.border }]}>
+          <View style={[styles.scopePanel, { backgroundColor: theme.card, borderColor: theme.border, shadowColor: theme.shadow }]}>
             <Text style={[styles.scopePanelTitle, { color: theme.text }]}>Dashboard statistics</Text>
             <Text style={[styles.scopePanelMeta, { color: theme.muted }]}>Select one or combine accounts.</Text>
             {error ? <Text style={[styles.scopeError, { color: theme.danger }]}>{error}</Text> : null}
@@ -390,6 +434,7 @@ function AccountScopeBar({ theme }: { theme: AppTheme }) {
             </View>
           </View>
         ) : null}
+        </View>
       </View>
     </View>
   );
@@ -424,6 +469,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '500',
     marginTop: 2
+  },
+  scopeRight: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: 12
   },
   scopeSelector: {
     position: 'relative',
@@ -469,7 +520,6 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1,
     padding: 18,
-    shadowColor: '#000000',
     shadowOffset: { width: 0, height: 12 },
     shadowOpacity: 0.16,
     shadowRadius: 32,
@@ -542,7 +592,29 @@ const styles = StyleSheet.create({
     gap: 32,
     borderRightWidth: 1,
     padding: 22,
-    paddingTop: 40
+    paddingTop: 40,
+    justifyContent: 'space-between'
+  },
+  sidebarFooter: {
+    gap: 10
+  },
+  themeToggle: {
+    flexDirection: 'row',
+    gap: 2,
+    borderRadius: 999,
+    borderWidth: 1,
+    padding: 3
+  },
+  themeOption: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 999,
+    paddingVertical: 7
+  },
+  themeOptionIcon: {
+    fontSize: 14,
+    fontWeight: '600'
   },
   brand: {
     fontSize: 22,
