@@ -592,15 +592,16 @@ const styles = StyleSheet.create({
     gap: 10
   },
   insightMetric: {
-    minWidth: 150,
+    minWidth: 130,
     flex: 1,
     gap: 5,
-    borderRadius: 8,
-    padding: 12
+    borderRadius: 12,
+    padding: 14
   },
   insightMetricValue: {
-    fontSize: 20,
-    fontWeight: '800'
+    fontSize: 22,
+    fontWeight: '700',
+    letterSpacing: -0.3
   },
   insightMetricLabel: {
     fontSize: 12,

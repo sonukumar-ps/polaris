@@ -1116,11 +1116,11 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start'
   },
   formCard: {
-    minWidth: 300,
+    minWidth: 260,
     flex: 2
   },
   sideCard: {
-    minWidth: 260,
+    minWidth: 240,
     flex: 1
   },
   formSection: {

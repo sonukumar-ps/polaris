@@ -1421,11 +1421,11 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start'
   },
   mainCard: {
-    minWidth: 300,
+    minWidth: 260,
     flex: 2
   },
   sideCard: {
-    minWidth: 280,
+    minWidth: 240,
     flex: 1
   },
   heroRow: {
@@ -1458,19 +1458,22 @@ const styles = StyleSheet.create({
     gap: 10
   },
   metric: {
-    minWidth: 150,
+    minWidth: 130,
     flex: 1,
     gap: 4,
-    borderRadius: 8,
-    padding: 12
+    borderRadius: 12,
+    padding: 14
   },
   metricLabel: {
-    fontSize: 12,
-    fontWeight: '800'
+    fontSize: 11,
+    fontWeight: '600',
+    letterSpacing: 0.2,
+    textTransform: 'uppercase' as const
   },
   metricValue: {
     fontSize: 17,
-    fontWeight: '800'
+    fontWeight: '700',
+    letterSpacing: -0.2
   },
   dividedSection: {
     gap: 10,
@@ -1705,7 +1708,7 @@ const styles = StyleSheet.create({
     lineHeight: 23
   },
   sideColumn: {
-    minWidth: 280,
+    minWidth: 240,
     flex: 1,
     gap: 14
   },

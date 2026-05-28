@@ -43,6 +43,7 @@ export function AppShell({
   const theme = useAppTheme();
   const { width } = useWindowDimensions();
   const showSidebar = width >= 900;
+  const isCompact = width < 600;
 
   return (
     <View style={[styles.shell, { backgroundColor: theme.background }]}>
@@ -51,7 +52,11 @@ export function AppShell({
         <AccountScopeBar theme={theme} />
         <ScrollView
           style={styles.scroll}
-          contentContainerStyle={[styles.content, showSidebar ? styles.contentWithSidebar : null]}
+          contentContainerStyle={[
+            styles.content,
+            isCompact ? styles.contentCompact : null,
+            showSidebar ? styles.contentWithSidebar : null
+          ]}
         >
           <FadeInView>{children}</FadeInView>
         </ScrollView>
@@ -399,11 +404,12 @@ const styles = StyleSheet.create({
   scopeBar: {
     minHeight: 68,
     flexDirection: 'row',
-    gap: 18,
+    flexWrap: 'wrap',
+    gap: 14,
     alignItems: 'center',
     justifyContent: 'space-between',
     borderBottomWidth: 1,
-    paddingHorizontal: 24,
+    paddingHorizontal: 20,
     paddingVertical: 12,
     zIndex: 50
   },
@@ -514,6 +520,10 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 20,
+    paddingBottom: 44
+  },
+  contentCompact: {
+    padding: 16,
     paddingBottom: 44
   },
   contentWithSidebar: {
