@@ -138,10 +138,10 @@ export default function LevelsScreen() {
     } catch (err) {
       // Revert to the exact pre-action state — no surprises from unrelated server changes
       setLevels((prev) => prev.map((l) => (l.id === id ? previous : l)));
+      // Log the real error for debugging; show a friendly message
+      console.warn('Touch update failed:', err);
       setError(
-        err instanceof Error
-          ? `Touch not saved — ${err.message}. The count was reverted.`
-          : 'Touch not saved — the count was reverted.'
+        `Couldn't save that touch — ${friendlyReason(err)}. Your change was reverted.`
       );
     }
   }
@@ -163,10 +163,9 @@ export default function LevelsScreen() {
         if (a.symbol !== b.symbol) return a.symbol.localeCompare(b.symbol);
         return Number(b.price) - Number(a.price);
       }));
+      console.warn('Archive failed:', err);
       setError(
-        err instanceof Error
-          ? `Archive failed — ${err.message}. The level is still visible.`
-          : 'Archive failed — the level is still visible.'
+        `Couldn't archive that level — ${friendlyReason(err)}. The level is still here.`
       );
     }
   }
@@ -185,12 +184,43 @@ export default function LevelsScreen() {
         if (a.symbol !== b.symbol) return a.symbol.localeCompare(b.symbol);
         return Number(b.price) - Number(a.price);
       }));
+      console.warn('Delete failed:', err);
       setError(
-        err instanceof Error
-          ? `Delete failed — ${err.message}. The level is still here.`
-          : 'Delete failed — the level is still here.'
+        `Couldn't delete that level — ${friendlyReason(err)}. The level is still here.`
       );
     }
+  }
+
+  /**
+   * Maps a raw error into a user-friendly hint without exposing schema
+   * or constraint names. Real error is logged to console for debugging.
+   */
+  function friendlyReason(err: unknown): string {
+    const message = err instanceof Error ? err.message.toLowerCase() : '';
+
+    if (
+      message.includes('network') ||
+      message.includes('fetch') ||
+      message.includes('failed to fetch') ||
+      message.includes('timeout')
+    ) {
+      return 'check your connection and try again';
+    }
+
+    if (
+      message.includes('sign in') ||
+      message.includes('session') ||
+      message.includes('jwt') ||
+      message.includes('auth')
+    ) {
+      return 'your session expired, please sign in again';
+    }
+
+    if (message.includes('not found')) {
+      return 'the level may have been deleted on another device';
+    }
+
+    return 'please try again';
   }
 
   const filterOptions = [
