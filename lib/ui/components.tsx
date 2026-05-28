@@ -592,11 +592,7 @@ const styles = StyleSheet.create({
     gap: 32,
     borderRightWidth: 1,
     padding: 22,
-    paddingTop: 40,
-    justifyContent: 'space-between'
-  },
-  sidebarFooter: {
-    gap: 10
+    paddingTop: 40
   },
   themeToggle: {
     flexDirection: 'row',
