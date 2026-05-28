@@ -179,6 +179,7 @@ export function TextField({
   error,
   inputMode = 'text',
   label,
+  labelExtra,
   multiline = false,
   onChangeText,
   placeholder,
@@ -188,6 +189,7 @@ export function TextField({
   error?: string;
   inputMode?: 'decimal' | 'text';
   label: string;
+  labelExtra?: ReactNode;
   multiline?: boolean;
   onChangeText: (value: string) => void;
   placeholder: string;
@@ -197,7 +199,12 @@ export function TextField({
 
   return (
     <View style={styles.field}>
-      <Text style={[styles.fieldLabel, { color: theme.muted }]}>{label}</Text>
+      {label || labelExtra ? (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          {label ? <Text style={[styles.fieldLabel, { color: theme.muted }]}>{label}</Text> : null}
+          {labelExtra}
+        </View>
+      ) : null}
       <TextInput
         autoCapitalize={autoCapitalize}
         inputMode={inputMode}

@@ -12,12 +12,14 @@ import {
 import {
   AppShell,
   Card,
+  InfoTip,
   LoadingState,
   PrimaryButton,
   SectionHeading,
   TextField,
   useAppTheme
 } from '@/lib/ui';
+import type { GlossaryTerm } from '@/lib/ui';
 import {
   listChecklistsByDate,
   listStrategies,
@@ -392,6 +394,7 @@ export default function ChecklistScreen() {
             count={`${criticalFilledCount}/4`}
             isOpen={isCriticalOpen}
             onToggle={() => setIsCriticalOpen((v) => !v)}
+            term="critical_columns"
             title="Critical columns"
           >
             <TickCrossField
@@ -412,6 +415,7 @@ export default function ChecklistScreen() {
               onSelect={(v) => updateDraft('marketPhase', v as MarketPhase | '')}
               options={['pullback', 'impulse', 'consolidation']}
               selected={draft.marketPhase}
+              term="market_phase"
             />
             <TickCrossField
               label="Market phase — pullback relative to trade direction?"
@@ -464,6 +468,7 @@ export default function ChecklistScreen() {
             <TickCrossField
               label="Market deceleration — smaller candles / reversal pattern?"
               onSelect={(v) => updateDraft('decelerationPass', v)}
+              term="deceleration"
               value={draft.decelerationPass}
             />
             <ChipSelector
@@ -479,6 +484,7 @@ export default function ChecklistScreen() {
               onSelect={(v) => updateDraft('decelerationEvidence', v as DecelerationEvidence | '')}
               options={['small_candles', 'doji', 'tweezer', 'inside_bar', 'hlt', 'engulfing']}
               selected={draft.decelerationEvidence}
+              term="deceleration"
             />
           </CollapsibleSection>
 
@@ -533,6 +539,7 @@ export default function ChecklistScreen() {
             />
             <TextField
               label="Multiple timeframe confirmation"
+              labelExtra={<InfoTip term="mtf_confirmation" />}
               onChangeText={(v) => updateDraft('mtfConfirmation', v)}
               placeholder="e.g. 1H MACD aligned, weekly trend supports"
               value={draft.mtfConfirmation}
@@ -755,12 +762,14 @@ function CollapsibleSection({
   count,
   isOpen,
   onToggle,
+  term,
   title
 }: {
   children: React.ReactNode;
   count?: string;
   isOpen: boolean;
   onToggle: () => void;
+  term?: GlossaryTerm;
   title: string;
 }) {
   const theme = useAppTheme();
@@ -768,9 +777,12 @@ function CollapsibleSection({
   return (
     <Card>
       <Pressable onPress={onToggle} style={styles.sectionHeaderRow}>
-        <Text style={[styles.sectionTitle, { color: theme.text }]}>
-          {title}{count ? ` (${count})` : ''}
-        </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexShrink: 1 }}>
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>
+            {title}{count ? ` (${count})` : ''}
+          </Text>
+          {term ? <InfoTip term={term} /> : null}
+        </View>
         <Text style={[styles.chevron, { color: theme.muted }]}>{isOpen ? '▲' : '▼'}</Text>
       </Pressable>
       {isOpen ? <View style={styles.sectionBody}>{children}</View> : null}
@@ -781,17 +793,22 @@ function CollapsibleSection({
 function TickCrossField({
   label,
   onSelect,
+  term,
   value
 }: {
   label: string;
   onSelect: (value: boolean | null) => void;
+  term?: GlossaryTerm;
   value: boolean | null;
 }) {
   const theme = useAppTheme();
 
   return (
     <View style={styles.tickCrossField}>
-      <Text style={[styles.tickCrossLabel, { color: theme.text }]}>{label}</Text>
+      <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+        <Text style={[styles.tickCrossLabel, { color: theme.text }]}>{label}</Text>
+        {term ? <InfoTip term={term} /> : null}
+      </View>
       <View style={styles.tickCrossRow}>
         <Pressable
           onPress={() => onSelect(value === true ? null : true)}
@@ -831,19 +848,24 @@ function ChipSelector({
   labels = {},
   onSelect,
   options,
-  selected
+  selected,
+  term
 }: {
   label: string;
   labels?: Record<string, string>;
   onSelect: (value: string) => void;
   options: string[];
   selected: string;
+  term?: GlossaryTerm;
 }) {
   const theme = useAppTheme();
 
   return (
     <View style={styles.chipField}>
-      <Text style={[styles.fieldLabel, { color: theme.muted }]}>{label}</Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+        <Text style={[styles.fieldLabel, { color: theme.muted }]}>{label}</Text>
+        {term ? <InfoTip term={term} /> : null}
+      </View>
       <View style={styles.chipRow}>
         {options.map((opt) => {
           const isSelected = selected === opt;

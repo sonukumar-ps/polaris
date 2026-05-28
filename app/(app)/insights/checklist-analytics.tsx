@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { AppShell, Card, LoadingState, SectionHeading, useAppTheme } from '@/lib/ui';
+import { AppShell, Card, InfoTip, LoadingState, SectionHeading, useAppTheme } from '@/lib/ui';
+import type { GlossaryTerm } from '@/lib/ui';
 import {
   getChecklistAnalytics,
   getChecklistDailyBreakdown
@@ -142,18 +143,21 @@ export default function ChecklistAnalyticsScreen() {
             <View style={styles.headlineGrid}>
               <HeadlineMetric
                 label="Qualify rate"
+                term="qualify_rate"
                 value={`${Math.round(summary.qualifyRate * 100)}%`}
                 meta={`${summary.qualifiedCount} of ${summary.totalChecklists} setups`}
                 color={summary.qualifyRate >= 0.2 ? theme.positive : theme.muted}
               />
               <HeadlineMetric
                 label="Consistency"
+                term="consistency_rate"
                 value={`${Math.round(summary.consistencyRate * 100)}%`}
                 meta={`${summary.daysWithChecklists} of ${summary.totalDaysInRange} days`}
                 color={summary.consistencyRate >= 0.7 ? theme.positive : theme.danger}
               />
               <HeadlineMetric
                 label="Trigger rate"
+                term="trigger_rate"
                 value={
                   summary.ordersPlacedFromChecklist > 0
                     ? `${Math.round(summary.triggerRate * 100)}%`
@@ -174,6 +178,7 @@ export default function ChecklistAnalyticsScreen() {
               />
               <HeadlineMetric
                 label="Qualified win rate"
+                term="qualified_win_rate"
                 value={
                   summary.qualifiedTradesWon + summary.qualifiedTradesLost > 0
                     ? `${Math.round(summary.qualifiedWinRate * 100)}%`
@@ -229,7 +234,10 @@ export default function ChecklistAnalyticsScreen() {
 
           {/* Critical column pass rates */}
           <Card>
-            <Text style={[styles.sectionTitle, { color: theme.text }]}>Critical column pass rates</Text>
+            <View style={styles.headlineLabelRow}>
+              <Text style={[styles.sectionTitle, { color: theme.text }]}>Critical column pass rates</Text>
+              <InfoTip term="critical_columns" />
+            </View>
             <Text style={[styles.cardSubtitle, { color: theme.muted }]}>
               Which criterion is your most common veto?
             </Text>
@@ -266,17 +274,22 @@ function HeadlineMetric({
   color,
   label,
   meta,
+  term,
   value
 }: {
   color: string;
   label: string;
   meta: string;
+  term?: GlossaryTerm;
   value: string;
 }) {
   const theme = useAppTheme();
   return (
     <View style={[styles.headlineCard, { backgroundColor: theme.mutedSurface }]}>
-      <Text style={[styles.headlineLabel, { color: theme.muted }]}>{label}</Text>
+      <View style={styles.headlineLabelRow}>
+        <Text style={[styles.headlineLabel, { color: theme.muted }]}>{label}</Text>
+        {term ? <InfoTip term={term} /> : null}
+      </View>
       <Text style={[styles.headlineValue, { color }]}>{value}</Text>
       <Text style={[styles.headlineMeta, { color: theme.muted }]}>{meta}</Text>
     </View>
@@ -442,6 +455,7 @@ const styles = StyleSheet.create({
   headlineGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   headlineCard: { flex: 1, minWidth: 140, gap: 3, borderRadius: 8, padding: 12 },
   headlineLabel: { fontSize: 11, fontWeight: '800' },
+  headlineLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   headlineValue: { fontSize: 28, fontWeight: '800' },
   headlineMeta: { fontSize: 11 },
 

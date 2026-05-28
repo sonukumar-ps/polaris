@@ -4,6 +4,7 @@ import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 import {
   AppShell,
   Card,
+  InfoTip,
   LoadingState,
   PrimaryButton,
   SectionHeading,
@@ -327,9 +328,12 @@ function PairLevelsCard({
             </Text>
           ) : null}
           {flipZones > 0 ? (
-            <Text style={[styles.pairCount, { color: theme.accent }]}>
-              ⇋ {flipZones}
-            </Text>
+            <View style={styles.flipBadge}>
+              <Text style={[styles.pairCount, { color: theme.accent }]}>
+                ⇋ {flipZones} Flip
+              </Text>
+              <InfoTip term="flip_zone" />
+            </View>
           ) : null}
         </View>
       </View>
@@ -495,7 +499,10 @@ function AddLevelModal({
             </View>
 
             <View>
-              <Text style={[styles.fieldLabel, { color: theme.muted }]}>Type</Text>
+              <View style={styles.labelRow}>
+                <Text style={[styles.fieldLabel, { color: theme.muted }]}>Type</Text>
+                <InfoTip term="dynamic_ema" />
+              </View>
               <View style={styles.chipRow}>
                 {(
                   [
@@ -527,7 +534,10 @@ function AddLevelModal({
             </View>
 
             <View>
-              <Text style={[styles.fieldLabel, { color: theme.muted }]}>Role</Text>
+              <View style={styles.labelRow}>
+                <Text style={[styles.fieldLabel, { color: theme.muted }]}>Role</Text>
+                <InfoTip term="flip_zone" />
+              </View>
               <View style={styles.chipRow}>
                 {(
                   [
@@ -561,6 +571,7 @@ function AddLevelModal({
             <TextField
               inputMode="decimal"
               label="Touch count"
+              labelExtra={<InfoTip term="sr_touch_count" />}
               onChangeText={(v) => onUpdate('touchCount', v)}
               placeholder="1"
               value={draft.touchCount}
@@ -740,5 +751,7 @@ const styles = StyleSheet.create({
   chipText: { fontSize: 13, fontWeight: '800' },
   selectOption: { borderRadius: 8, borderWidth: 1, padding: 12 },
   selectOptionText: { fontSize: 15, fontWeight: '800' },
-  pressed: { opacity: 0.72 }
+  pressed: { opacity: 0.72 },
+  labelRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 },
+  flipBadge: { flexDirection: 'row', alignItems: 'center', gap: 5 }
 });

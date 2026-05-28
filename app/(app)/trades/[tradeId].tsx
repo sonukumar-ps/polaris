@@ -7,6 +7,7 @@ import {
   AppShell,
   Card,
   EmptyState,
+  InfoTip,
   LoadingState,
   PrimaryButton,
   SecondaryLinkButton,
@@ -489,26 +490,32 @@ function StopLossTrailCard({
     <Card style={styles.sideCard}>
       <View style={styles.cardHeader}>
         <View>
-          <Text style={[styles.sectionTitle, { color: theme.text }]}>Stop-loss trail</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>Stop-loss trail</Text>
+            <InfoTip term="trailing_stop" />
+          </View>
           <Text style={[styles.sideMeta, { color: theme.muted }]}>
             {history.length} move{history.length !== 1 ? 's' : ''}
             {trade.is_bulletproof ? ' • Bulletproof' : ''}
           </Text>
         </View>
         {!trade.is_bulletproof && currentSl !== null ? (
-          <Pressable
-            disabled={isMarkingBp}
-            onPress={handleMarkBulletproof}
-            style={({ pressed }) => [
-              styles.inlineAction,
-              { backgroundColor: theme.card, borderColor: theme.positive },
-              pressed && styles.pressed
-            ]}
-          >
-            <Text style={[styles.inlineActionText, { color: theme.positive }]}>
-              {isMarkingBp ? 'Marking...' : '🛡️ Bulletproof'}
-            </Text>
-          </Pressable>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Pressable
+              disabled={isMarkingBp}
+              onPress={handleMarkBulletproof}
+              style={({ pressed }) => [
+                styles.inlineAction,
+                { backgroundColor: theme.card, borderColor: theme.positive },
+                pressed && styles.pressed
+              ]}
+            >
+              <Text style={[styles.inlineActionText, { color: theme.positive }]}>
+                {isMarkingBp ? 'Marking...' : '🛡️ Bulletproof'}
+              </Text>
+            </Pressable>
+            <InfoTip term="bulletproof" />
+          </View>
         ) : null}
       </View>
 
@@ -740,12 +747,23 @@ function OrderManagementCard({ trade }: { trade: TradeSummary }) {
     intermediate: 'Intermediate'
   };
 
+  // Map management_option to glossary term
+  const mgmtTerm: Record<string, 'basic_management' | 'intermediate_management' | 'advanced_management'> = {
+    advanced: 'advanced_management',
+    basic: 'basic_management',
+    intermediate: 'intermediate_management'
+  };
+
   return (
     <View style={[styles.dividedSection, { borderColor: theme.border }]}>
       <Text style={[styles.sectionTitle, { color: theme.text }]}>Order management</Text>
       <View style={styles.psychGrid}>
         {trade.entry_order_type ? (
-          <PsychChip label="Order type" value={orderTypeLabel[trade.entry_order_type] ?? trade.entry_order_type} />
+          <PsychChipWithTip
+            label="Order type"
+            term={trade.entry_order_type === 'pending_buy_stop' ? 'pending_buy_stop' : trade.entry_order_type === 'pending_sell_stop' ? 'pending_sell_stop' : undefined}
+            value={orderTypeLabel[trade.entry_order_type] ?? trade.entry_order_type}
+          />
         ) : null}
         {trade.order_triggered !== null ? (
           <PsychChip
@@ -755,16 +773,20 @@ function OrderManagementCard({ trade }: { trade: TradeSummary }) {
           />
         ) : null}
         {trade.order_expired ? (
-          <PsychChip label="Expired" tone="negative" value="Yes" />
+          <PsychChipWithTip label="Expired" term="expired_order" tone="negative" value="Yes" />
         ) : null}
         {trade.management_option ? (
-          <PsychChip label="Management" value={mgmtLabel[trade.management_option] ?? trade.management_option} />
+          <PsychChipWithTip
+            label="Management"
+            term={mgmtTerm[trade.management_option]}
+            value={mgmtLabel[trade.management_option] ?? trade.management_option}
+          />
         ) : null}
         {trade.is_bulletproof ? (
-          <PsychChip label="Bulletproof" tone="positive" value="Yes" />
+          <PsychChipWithTip label="Bulletproof" term="bulletproof" tone="positive" value="Yes" />
         ) : null}
         {trade.trailing_stop_count !== null && trade.trailing_stop_count > 0 ? (
-          <PsychChip label="SL trails" value={String(trade.trailing_stop_count)} />
+          <PsychChipWithTip label="SL trails" term="trailing_stop" value={String(trade.trailing_stop_count)} />
         ) : null}
         {trade.intended_entry_price !== null ? (
           <PsychChip label="Intended entry" value={formatNumber(trade.intended_entry_price)} />
@@ -773,12 +795,37 @@ function OrderManagementCard({ trade }: { trade: TradeSummary }) {
           <PsychChip label="Slippage" value={`${trade.slippage_pips} pips`} />
         ) : null}
         {trade.rr_to_last_swing !== null ? (
-          <PsychChip label="R:R last swing" value={String(trade.rr_to_last_swing)} />
+          <PsychChipWithTip label="R:R last swing" term="planned_rr" value={String(trade.rr_to_last_swing)} />
         ) : null}
         {trade.rr_to_next_sr !== null ? (
-          <PsychChip label="R:R next S/R" value={String(trade.rr_to_next_sr)} />
+          <PsychChipWithTip label="R:R next S/R" term="planned_rr" value={String(trade.rr_to_next_sr)} />
         ) : null}
       </View>
+    </View>
+  );
+}
+
+function PsychChipWithTip({
+  label,
+  term,
+  tone,
+  value
+}: {
+  label: string;
+  term?: keyof typeof import('@/lib/ui').GLOSSARY;
+  tone?: 'positive' | 'negative';
+  value: string;
+}) {
+  const theme = useAppTheme();
+  const valueColor = tone === 'positive' ? theme.positive : tone === 'negative' ? theme.danger : theme.text;
+
+  return (
+    <View style={[styles.psychChip, { backgroundColor: theme.mutedSurface }]}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+        <Text style={[styles.psychChipLabel, { color: theme.muted }]}>{label}</Text>
+        {term ? <InfoTip term={term} /> : null}
+      </View>
+      <Text style={[styles.psychChipValue, { color: valueColor }]}>{value}</Text>
     </View>
   );
 }

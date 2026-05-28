@@ -2,7 +2,7 @@ import { Link } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { AppShell, Card, LoadingState, SectionHeading, useAppTheme } from '@/lib/ui';
+import { AppShell, Card, InfoTip, LoadingState, SectionHeading, useAppTheme } from '@/lib/ui';
 import {
   calculateCurrencyExposure,
   calculateExposureWarnings,
@@ -142,7 +142,10 @@ export default function ExposureScreen() {
           )}
 
           <Card>
-            <Text style={[styles.sectionTitle, { color: theme.text }]}>Currency exposure</Text>
+            <View style={styles.titleRow}>
+              <Text style={[styles.sectionTitle, { color: theme.text }]}>Currency exposure</Text>
+              <InfoTip term="net_exposure" />
+            </View>
             <Text style={[styles.cardSubtitle, { color: theme.muted }]}>
               Sorted by absolute exposure magnitude
             </Text>
@@ -311,5 +314,6 @@ const styles = StyleSheet.create({
   tradePillBp: { fontSize: 11 },
   seedButton: { alignItems: 'center', borderRadius: 8, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 10 },
   seedButtonText: { fontSize: 13, fontWeight: '800' },
-  pressed: { opacity: 0.72 }
+  pressed: { opacity: 0.72 },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 }
 });
