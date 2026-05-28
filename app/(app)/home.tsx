@@ -1,4 +1,4 @@
-import { Link } from 'expo-router';
+import { Link, useRouter } from 'expo-router';
 import type { Href } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
@@ -19,6 +19,7 @@ import {
   calculateDashboardMetrics,
   calculateStrategyPerformance,
   generateInsightCoach,
+  listStrategies,
   listTradeSummaries,
   useAccountScope
 } from '@/lib/trades';
@@ -34,12 +35,32 @@ const NEW_TRADE_ROUTE = '/trades/new' as Href;
 const TRADES_ROUTE = '/trades' as Href;
 
 export default function HomeScreen() {
+  const router = useRouter();
   const theme = useAppTheme();
   const {
     error: accountError,
     isLoading: isLoadingAccounts,
     selectedAccountIds
   } = useAccountScope();
+
+  // First-run redirect: if user has no strategies, send them to onboarding
+  useEffect(() => {
+    let isActive = true;
+    async function checkOnboarding() {
+      try {
+        const strategies = await listStrategies();
+        if (isActive && strategies.length === 0) {
+          router.replace('/onboarding' as Href);
+        }
+      } catch {
+        // silent — user can navigate manually if check fails
+      }
+    }
+    void checkOnboarding();
+    return () => {
+      isActive = false;
+    };
+  }, []);
   const [trades, setTrades] = useState<TradeSummary[]>([]);
   const [dashboardError, setDashboardError] = useState<string | null>(null);
   const [isLoadingDashboard, setIsLoadingDashboard] = useState(true);
