@@ -69,20 +69,6 @@ export default function LevelsScreen() {
     }
   }
 
-  // Background refresh (no loading state). Used to silently re-sync after
-  // optimistic updates in case server-side calculations changed something.
-  async function silentRefresh() {
-    try {
-      const loaded = await listSrLevels({
-        activeOnly: true,
-        symbol: filterSymbol || undefined
-      });
-      setLevels(loaded);
-    } catch {
-      // silent — keep optimistic state
-    }
-  }
-
   useEffect(() => {
     void reload();
   }, [filterSymbol]);
@@ -108,6 +94,7 @@ export default function LevelsScreen() {
     setError(null);
 
     try {
+      // Save first — we need the server-generated id for the optimistic insert
       const created = await createSrLevel({
         levelRole: draft.levelRole || null,
         notes: draft.notes.trim() || null,
@@ -117,7 +104,6 @@ export default function LevelsScreen() {
         type: draft.type
       });
 
-      // Optimistically insert the new level — sorting handled by groupedLevels
       setLevels((prev) => [...prev, created].sort((a, b) => {
         if (a.symbol !== b.symbol) return a.symbol.localeCompare(b.symbol);
         return Number(b.price) - Number(a.price);
@@ -132,6 +118,10 @@ export default function LevelsScreen() {
   }
 
   async function handleTouch(id: string) {
+    // Snapshot the row's previous values so we can revert exactly
+    const previous = levels.find((l) => l.id === id);
+    if (!previous) return;
+
     // Optimistic update — bump touch count + today's date immediately
     const today = new Date().toISOString().slice(0, 10);
     setLevels((prev) =>
@@ -141,37 +131,65 @@ export default function LevelsScreen() {
           : l
       )
     );
+    setError(null);
 
     try {
       await incrementLevelTouch(id);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not record touch.');
-      // Re-sync on failure
-      await silentRefresh();
+      // Revert to the exact pre-action state — no surprises from unrelated server changes
+      setLevels((prev) => prev.map((l) => (l.id === id ? previous : l)));
+      setError(
+        err instanceof Error
+          ? `Touch not saved — ${err.message}. The count was reverted.`
+          : 'Touch not saved — the count was reverted.'
+      );
     }
   }
 
   async function handleDeactivate(id: string) {
+    // Snapshot the row so we can put it back if the call fails
+    const previous = levels.find((l) => l.id === id);
+    if (!previous) return;
+
     // Optimistic remove from active list
     setLevels((prev) => prev.filter((l) => l.id !== id));
+    setError(null);
 
     try {
       await updateSrLevel(id, { isActive: false });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not deactivate level.');
-      await silentRefresh();
+      // Re-insert the row in its original position
+      setLevels((prev) => [...prev, previous].sort((a, b) => {
+        if (a.symbol !== b.symbol) return a.symbol.localeCompare(b.symbol);
+        return Number(b.price) - Number(a.price);
+      }));
+      setError(
+        err instanceof Error
+          ? `Archive failed — ${err.message}. The level is still visible.`
+          : 'Archive failed — the level is still visible.'
+      );
     }
   }
 
   async function handleDelete(id: string) {
-    // Optimistic remove
+    const previous = levels.find((l) => l.id === id);
+    if (!previous) return;
+
     setLevels((prev) => prev.filter((l) => l.id !== id));
+    setError(null);
 
     try {
       await deleteSrLevel(id);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not delete level.');
-      await silentRefresh();
+      setLevels((prev) => [...prev, previous].sort((a, b) => {
+        if (a.symbol !== b.symbol) return a.symbol.localeCompare(b.symbol);
+        return Number(b.price) - Number(a.price);
+      }));
+      setError(
+        err instanceof Error
+          ? `Delete failed — ${err.message}. The level is still here.`
+          : 'Delete failed — the level is still here.'
+      );
     }
   }
 
