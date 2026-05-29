@@ -66,6 +66,29 @@ export function TradeReviewChart({ trade }: { trade: ReviewTrade }) {
   const symbol = trade.symbol.toUpperCase();
   const isSupported = SUPPORTED_FX_PAIRS.has(symbol);
   const isWeb = Platform.OS === 'web';
+  const wrapRef = useRef<View>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // Track fullscreen state from the browser (e.g. ESC to exit)
+  useEffect(() => {
+    if (!isWeb || typeof document === 'undefined') return;
+    function onChange() {
+      setIsFullscreen(Boolean(document.fullscreenElement));
+    }
+    document.addEventListener('fullscreenchange', onChange);
+    return () => document.removeEventListener('fullscreenchange', onChange);
+  }, [isWeb]);
+
+  function toggleFullscreen() {
+    if (typeof document === 'undefined') return;
+    const node = wrapRef.current as unknown as HTMLElement | null;
+    if (!node) return;
+    if (document.fullscreenElement) {
+      void document.exitFullscreen();
+    } else if (node.requestFullscreen) {
+      void node.requestFullscreen();
+    }
+  }
 
   // ── Bar fetch ──────────────────────────────────────────────────────
   useEffect(() => {
@@ -162,7 +185,20 @@ export function TradeReviewChart({ trade }: { trade: ReviewTrade }) {
   if (!isSupported) return null;
 
   return (
-    <View style={styles.wrap}>
+    <View
+      ref={wrapRef}
+      style={[
+        styles.wrap,
+        isFullscreen && {
+          backgroundColor: theme.background,
+          padding: 24,
+          gap: 16,
+          flex: 1,
+          width: '100%',
+          height: '100%'
+        }
+      ]}
+    >
       <View style={styles.headerRow}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
           <Text style={[styles.title, { color: theme.text }]}>
@@ -173,28 +209,45 @@ export function TradeReviewChart({ trade }: { trade: ReviewTrade }) {
             definition="Candles are Dukascopy bid prices, served from local cache after first load. Your fill (entry/exit) is overlaid. Note that your broker's spread will explain part of any gap between your fill and the bar."
           />
         </View>
-        <View style={[styles.tfToggle, { backgroundColor: theme.mutedSurface, borderColor: theme.border }]}>
-          {(['1h', '1d'] as const).map((tf) => {
-            const isSelected = timeframe === tf;
-            return (
-              <Pressable
-                key={tf}
-                onPress={() => setTimeframe(tf)}
-                style={({ pressed }) => [
-                  styles.tfOption,
-                  { backgroundColor: isSelected ? theme.card : 'transparent' },
-                  pressed && styles.pressed
-                ]}
-              >
-                <Text style={[
-                  styles.tfOptionText,
-                  { color: isSelected ? theme.accent : theme.muted }
-                ]}>
-                  {tf}
-                </Text>
-              </Pressable>
-            );
-          })}
+        <View style={styles.headerActions}>
+          <View style={[styles.tfToggle, { backgroundColor: theme.mutedSurface, borderColor: theme.border }]}>
+            {(['1h', '1d'] as const).map((tf) => {
+              const isSelected = timeframe === tf;
+              return (
+                <Pressable
+                  key={tf}
+                  onPress={() => setTimeframe(tf)}
+                  style={({ pressed }) => [
+                    styles.tfOption,
+                    { backgroundColor: isSelected ? theme.card : 'transparent' },
+                    pressed && styles.pressed
+                  ]}
+                >
+                  <Text style={[
+                    styles.tfOptionText,
+                    { color: isSelected ? theme.accent : theme.muted }
+                  ]}>
+                    {tf}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+          {isWeb && typeof document !== 'undefined' && document.fullscreenEnabled !== false ? (
+            <Pressable
+              accessibilityLabel={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
+              onPress={toggleFullscreen}
+              style={({ pressed }) => [
+                styles.fsButton,
+                { backgroundColor: theme.mutedSurface, borderColor: theme.border },
+                pressed && styles.pressed
+              ]}
+            >
+              <Text style={[styles.fsIcon, { color: theme.muted }]}>
+                {isFullscreen ? '⛶' : '⛶'}
+              </Text>
+            </Pressable>
+          ) : null}
         </View>
       </View>
 
@@ -203,29 +256,38 @@ export function TradeReviewChart({ trade }: { trade: ReviewTrade }) {
       ) : null}
       {error ? <Text style={[styles.error, { color: theme.danger }]}>{error}</Text> : null}
 
+      {/* Chart + overlaid tooltip — wrapped in a positioned container so the
+          tooltip doesn't push surrounding content around when it appears. */}
       {!isLoading && !error ? (
-        <ChartCanvas
-          bars={bars}
-          excursion={excursion}
-          onHoverBar={setHoveredBar}
-          theme={theme}
-          timeframe={timeframe}
-          trade={trade}
-        />
-      ) : null}
-
-      {/* Tooltip / legend */}
-      {hoveredBar ? (
-        <View style={[styles.tooltip, { backgroundColor: theme.mutedSurface, borderColor: theme.border }]}>
-          <Text style={[styles.tooltipTs, { color: theme.muted }]}>
-            {formatUtc(hoveredBar.ts)} UTC
-          </Text>
-          <View style={styles.tooltipRow}>
-            <TooltipChip label="O" value={formatPrice(hoveredBar.open, symbol)} color={theme.text} />
-            <TooltipChip label="H" value={formatPrice(hoveredBar.high, symbol)} color={theme.positive} />
-            <TooltipChip label="L" value={formatPrice(hoveredBar.low, symbol)} color={theme.danger} />
-            <TooltipChip label="C" value={formatPrice(hoveredBar.close, symbol)} color={theme.text} />
-          </View>
+        <View style={[styles.chartContainer, isFullscreen && styles.chartContainerFs]}>
+          <ChartCanvas
+            bars={bars}
+            excursion={excursion}
+            isFullscreen={isFullscreen}
+            onHoverBar={setHoveredBar}
+            theme={theme}
+            timeframe={timeframe}
+            trade={trade}
+          />
+          {hoveredBar ? (
+            <View
+              pointerEvents="none"
+              style={[
+                styles.tooltipOverlay,
+                { backgroundColor: theme.card + 'EE', borderColor: theme.border }
+              ]}
+            >
+              <Text style={[styles.tooltipTs, { color: theme.muted }]}>
+                {formatUtc(hoveredBar.ts)} UTC
+              </Text>
+              <View style={styles.tooltipRow}>
+                <TooltipChip label="O" value={formatPrice(hoveredBar.open, symbol)} color={theme.text} />
+                <TooltipChip label="H" value={formatPrice(hoveredBar.high, symbol)} color={theme.positive} />
+                <TooltipChip label="L" value={formatPrice(hoveredBar.low, symbol)} color={theme.danger} />
+                <TooltipChip label="C" value={formatPrice(hoveredBar.close, symbol)} color={theme.text} />
+              </View>
+            </View>
+          ) : null}
         </View>
       ) : null}
 
@@ -274,6 +336,7 @@ export function TradeReviewChart({ trade }: { trade: ReviewTrade }) {
 function ChartCanvas({
   bars,
   excursion,
+  isFullscreen,
   onHoverBar,
   theme,
   timeframe,
@@ -281,6 +344,7 @@ function ChartCanvas({
 }: {
   bars: FxBar[];
   excursion: Excursion | null;
+  isFullscreen: boolean;
   onHoverBar: (bar: FxBar | null) => void;
   theme: ReturnType<typeof useAppTheme>;
   timeframe: '1h' | '1d';
@@ -518,7 +582,30 @@ function ChartCanvas({
     chartRef.current?.timeScale().fitContent();
   }, [isChartReady, bars, excursion, trade, theme.accent, theme.positive, theme.danger]);
 
-  return <View ref={containerRef} style={[styles.chartHost, { borderColor: theme.border }]} />;
+  // ── Resize when fullscreen toggles ────────────────────────────────
+  useEffect(() => {
+    if (!isChartReady) return;
+    const node = containerRef.current as unknown as HTMLDivElement | null;
+    if (!node || !chartRef.current) return;
+    // Defer one frame so the browser has applied the new layout
+    const id = requestAnimationFrame(() => {
+      const rect = node.getBoundingClientRect();
+      chartRef.current?.resize(rect.width, rect.height);
+      chartRef.current?.timeScale().fitContent();
+    });
+    return () => cancelAnimationFrame(id);
+  }, [isChartReady, isFullscreen]);
+
+  return (
+    <View
+      ref={containerRef}
+      style={[
+        styles.chartHost,
+        { borderColor: theme.border },
+        isFullscreen && styles.chartHostFs
+      ]}
+    />
+  );
 }
 
 // ───────────────────────────────────────────────────────────────────
@@ -636,6 +723,11 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: -0.3
   },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8
+  },
   tfToggle: {
     flexDirection: 'row',
     gap: 2,
@@ -652,6 +744,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10
   },
   tfOptionText: { fontSize: 12, fontWeight: '600' },
+  fsButton: {
+    width: 34,
+    height: 34,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 8,
+    borderWidth: 1
+  },
+  fsIcon: { fontSize: 16, fontWeight: '600' },
+  chartContainer: {
+    position: 'relative',
+    width: '100%'
+  } as any,
+  chartContainerFs: {
+    flex: 1,
+    minHeight: 0
+  } as any,
   chartHost: {
     width: '100%',
     height: 380,
@@ -659,15 +768,23 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     overflow: 'hidden'
   } as any,
+  chartHostFs: {
+    height: '100%',
+    flex: 1
+  } as any,
   loading: { fontSize: 13, fontWeight: '500' },
   error: { fontSize: 13, fontWeight: '600' },
-  tooltip: {
+  tooltipOverlay: {
+    position: 'absolute',
+    top: 10,
+    left: 10,
     gap: 4,
     borderRadius: 8,
     borderWidth: 1,
     paddingHorizontal: 10,
-    paddingVertical: 8
-  },
+    paddingVertical: 8,
+    zIndex: 5
+  } as any,
   tooltipTs: { fontSize: 10, fontWeight: '600', letterSpacing: 0.3 },
   tooltipRow: { flexDirection: 'row', gap: 12, flexWrap: 'wrap' },
   tooltipChip: { gap: 1 },
