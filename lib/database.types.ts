@@ -161,6 +161,39 @@ export type Database = {
           },
         ]
       }
+      fx_ohlcv: {
+        Row: {
+          close: number
+          high: number
+          low: number
+          open: number
+          pair: string
+          timeframe: string
+          ts: string
+          volume: number | null
+        }
+        Insert: {
+          close: number
+          high: number
+          low: number
+          open: number
+          pair: string
+          timeframe: string
+          ts: string
+          volume?: number | null
+        }
+        Update: {
+          close?: number
+          high?: number
+          low?: number
+          open?: number
+          pair?: string
+          timeframe?: string
+          ts?: string
+          volume?: number | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           base_currency: string
