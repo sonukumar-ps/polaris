@@ -2,7 +2,11 @@ import { useLocalSearchParams } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { useEffect, useMemo, useState } from 'react';
 import { Image, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import Svg, { Circle, Polyline } from 'react-native-svg';
 
+import { supabase } from '@/lib/supabase';
+import { getBars } from '@/lib/fx';
+import type { FxBar } from '@/lib/fx';
 import {
   AppShell,
   Card,
@@ -730,7 +734,268 @@ function TradeReadOnlyCard({ onEdit, trade }: { onEdit: () => void; trade: Trade
       {trade.psychology ? <PsychologyCard trade={trade} /> : null}
 
       {hasOrderManagementData(trade) ? <OrderManagementCard trade={trade} /> : null}
+
+      <MarketContextCard trade={trade} />
     </>
+  );
+}
+
+const SUPPORTED_FX_PAIRS = new Set([
+  'EURUSD', 'USDJPY', 'GBPUSD', 'USDCHF', 'AUDUSD', 'USDCAD', 'NZDUSD'
+]);
+
+function MarketContextCard({ trade }: { trade: TradeSummary }) {
+  const theme = useAppTheme();
+  const [bars, setBars] = useState<FxBar[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const symbol = trade.asset?.symbol?.toUpperCase() ?? '';
+  const isSupported = SUPPORTED_FX_PAIRS.has(symbol);
+
+  useEffect(() => {
+    if (!isSupported || !trade.opened_at) return;
+
+    let isActive = true;
+    async function load() {
+      setIsLoading(true);
+      setError(null);
+      try {
+        // Window: 6h before opened_at → 6h after closed_at (or +6h if still open)
+        const openMs = new Date(trade.opened_at).getTime();
+        const closeMs = trade.closed_at ? new Date(trade.closed_at).getTime() : openMs;
+        const fromISO = new Date(openMs - 6 * 3600e3).toISOString();
+        const toISO = new Date(closeMs + 6 * 3600e3).toISOString();
+
+        const fetched = await getBars(supabase, symbol, '1h', fromISO, toISO);
+        if (isActive) setBars(fetched);
+      } catch (err) {
+        if (isActive) setError(userMessage(err, "Couldn't load reference data"));
+      } finally {
+        if (isActive) setIsLoading(false);
+      }
+    }
+    void load();
+    return () => {
+      isActive = false;
+    };
+  }, [isSupported, symbol, trade.opened_at, trade.closed_at]);
+
+  if (!isSupported) return null;
+
+  const entryRef = findBarAt(bars, trade.opened_at);
+  const exitRef = trade.closed_at ? findBarAt(bars, trade.closed_at) : null;
+
+  const entrySlip = entryRef ? trade.entry_price - entryRef.close : null;
+  const exitSlip = exitRef && trade.exit_price !== null
+    ? trade.exit_price - exitRef.close
+    : null;
+
+  return (
+    <View style={[styles.dividedSection, { borderColor: theme.border }]}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+        <Text style={[styles.sectionTitle, { color: theme.text }]}>Reference market context</Text>
+        <InfoTip
+          title="Reference market context"
+          definition="Dukascopy bid prices for the surrounding window. Compares your fill against where the neutral reference market was at the same instant. Note that your broker's spread will explain part of any slippage — this is a market-context check, not an exact like-for-like."
+        />
+      </View>
+      <Text style={[styles.referenceSubtitle, { color: theme.muted }]}>
+        Dukascopy {symbol} 1h bid · ±6h around trade
+      </Text>
+
+      {isLoading ? (
+        <Text style={[styles.referenceLoading, { color: theme.muted }]}>Loading...</Text>
+      ) : null}
+      {error ? <Text style={[styles.errorText, { color: theme.danger }]}>{error}</Text> : null}
+
+      {!isLoading && !error && bars.length > 0 ? (
+        <>
+          <View style={styles.psychGrid}>
+            {entryRef ? (
+              <PsychChip
+                label="Ref bid at entry"
+                value={formatPrice(entryRef.close)}
+              />
+            ) : null}
+            {entrySlip !== null ? (
+              <PsychChip
+                label="Entry slip"
+                tone={slipTone(entrySlip, trade.direction, 'entry')}
+                value={formatSlip(entrySlip, symbol)}
+              />
+            ) : null}
+            {exitRef ? (
+              <PsychChip
+                label="Ref bid at exit"
+                value={formatPrice(exitRef.close)}
+              />
+            ) : null}
+            {exitSlip !== null ? (
+              <PsychChip
+                label="Exit slip"
+                tone={slipTone(exitSlip, trade.direction, 'exit')}
+                value={formatSlip(exitSlip, symbol)}
+              />
+            ) : null}
+          </View>
+
+          <Sparkline
+            bars={bars}
+            entryPrice={trade.entry_price}
+            entryTs={trade.opened_at}
+            exitPrice={trade.exit_price ?? null}
+            exitTs={trade.closed_at ?? null}
+            theme={theme}
+          />
+        </>
+      ) : null}
+
+      {!isLoading && !error && bars.length === 0 ? (
+        <Text style={[styles.referenceLoading, { color: theme.muted }]}>
+          No reference bars found in this window — the trade may pre-date the backfill range.
+        </Text>
+      ) : null}
+    </View>
+  );
+}
+
+function findBarAt(bars: FxBar[], iso: string): FxBar | null {
+  if (!iso) return null;
+  const target = new Date(iso).getTime();
+  // The bar that contains `target` is the one whose ts <= target < ts + 1h
+  for (let i = bars.length - 1; i >= 0; i--) {
+    if (new Date(bars[i].ts).getTime() <= target) return bars[i];
+  }
+  return null;
+}
+
+function formatPrice(value: number): string {
+  return value.toFixed(5);
+}
+
+function formatSlip(slip: number, symbol: string): string {
+  // JPY pairs use 2 decimals; majors use 4. Pip = last decimal for non-JPY.
+  const isJpy = symbol.includes('JPY');
+  const pipFactor = isJpy ? 100 : 10000;
+  const pips = slip * pipFactor;
+  const sign = pips > 0 ? '+' : pips < 0 ? '−' : '';
+  return `${sign}${Math.abs(pips).toFixed(1)} pips`;
+}
+
+function slipTone(
+  slip: number,
+  direction: string,
+  side: 'entry' | 'exit'
+): 'positive' | 'negative' | undefined {
+  if (Math.abs(slip) < 1e-7) return undefined;
+  // For a LONG entry, paying more than reference = unfavorable.
+  // For a SHORT entry, selling for less than reference = unfavorable.
+  // For exits, the inverse.
+  const unfavorable =
+    side === 'entry'
+      ? direction === 'long'
+        ? slip > 0
+        : slip < 0
+      : direction === 'long'
+        ? slip < 0
+        : slip > 0;
+  return unfavorable ? 'negative' : 'positive';
+}
+
+function Sparkline({
+  bars,
+  entryPrice,
+  entryTs,
+  exitPrice,
+  exitTs,
+  theme
+}: {
+  bars: FxBar[];
+  entryPrice: number;
+  entryTs: string;
+  exitPrice: number | null;
+  exitTs: string | null;
+  theme: ReturnType<typeof useAppTheme>;
+}) {
+  const W = 320;
+  const H = 70;
+  const padding = 4;
+
+  const allPrices = [
+    ...bars.flatMap((b) => [b.high, b.low]),
+    entryPrice,
+    ...(exitPrice !== null ? [exitPrice] : [])
+  ];
+  const min = Math.min(...allPrices);
+  const max = Math.max(...allPrices);
+  const range = max - min || 1;
+
+  const firstTs = new Date(bars[0].ts).getTime();
+  const lastTs = new Date(bars[bars.length - 1].ts).getTime();
+  const tsRange = Math.max(1, lastTs - firstTs);
+
+  function xFor(ts: number) {
+    return padding + ((ts - firstTs) / tsRange) * (W - padding * 2);
+  }
+  function yFor(price: number) {
+    return padding + ((max - price) / range) * (H - padding * 2);
+  }
+
+  // Build close-price polyline
+  const points = bars
+    .map((b) => `${xFor(new Date(b.ts).getTime())},${yFor(b.close)}`)
+    .join(' ');
+
+  const entryX = xFor(new Date(entryTs).getTime());
+  const entryY = yFor(entryPrice);
+  const exitX = exitTs ? xFor(new Date(exitTs).getTime()) : null;
+  const exitY = exitPrice !== null ? yFor(exitPrice) : null;
+
+  return (
+    <View style={[styles.sparklineBox, { backgroundColor: theme.mutedSurface }]}>
+      <Svg width={W} height={H}>
+        {/* Reference price line */}
+        <Polyline
+          fill="none"
+          points={points}
+          stroke={theme.muted}
+          strokeWidth={1.5}
+        />
+        {/* Entry marker */}
+        <Circle cx={entryX} cy={entryY} fill={theme.accent} r={4} />
+        {/* Exit marker */}
+        {exitX !== null && exitY !== null ? (
+          <Circle
+            cx={exitX}
+            cy={exitY}
+            fill={exitPrice! >= entryPrice ? theme.positive : theme.danger}
+            r={4}
+          />
+        ) : null}
+      </Svg>
+      <View style={styles.sparklineLegend}>
+        <View style={styles.legendItem}>
+          <View style={[styles.legendDot, { backgroundColor: theme.muted }]} />
+          <Text style={[styles.legendText, { color: theme.muted }]}>Reference</Text>
+        </View>
+        <View style={styles.legendItem}>
+          <View style={[styles.legendDot, { backgroundColor: theme.accent }]} />
+          <Text style={[styles.legendText, { color: theme.muted }]}>Entry</Text>
+        </View>
+        {exitTs ? (
+          <View style={styles.legendItem}>
+            <View
+              style={[
+                styles.legendDot,
+                { backgroundColor: exitPrice! >= entryPrice ? theme.positive : theme.danger }
+              ]}
+            />
+            <Text style={[styles.legendText, { color: theme.muted }]}>Exit</Text>
+          </View>
+        ) : null}
+      </View>
+    </View>
   );
 }
 
@@ -1775,5 +2040,41 @@ const styles = StyleSheet.create({
   emptyBody: {
     fontSize: 13,
     lineHeight: 19
+  },
+  referenceSubtitle: {
+    fontSize: 12,
+    fontWeight: '500',
+    marginTop: -4,
+    marginBottom: 6
+  },
+  referenceLoading: {
+    fontSize: 13,
+    fontWeight: '500'
+  },
+  sparklineBox: {
+    borderRadius: 10,
+    padding: 12,
+    marginTop: 8,
+    alignItems: 'center',
+    gap: 8
+  },
+  sparklineLegend: {
+    flexDirection: 'row',
+    gap: 14,
+    alignItems: 'center'
+  },
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5
+  },
+  legendDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4
+  },
+  legendText: {
+    fontSize: 11,
+    fontWeight: '600'
   }
 });
