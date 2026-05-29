@@ -291,6 +291,9 @@ function ChartCanvas({
   const seriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
   const priceLinesRef = useRef<IPriceLine[]>([]);
   const markersRef = useRef<ISeriesMarkersPluginApi<Time> | null>(null);
+  // Async createChart means the data effect can race ahead of the series.
+  // Flip this once the series exists so the data effect re-runs.
+  const [isChartReady, setIsChartReady] = useState(false);
 
   // ── Create chart on mount ─────────────────────────────────────────
   useEffect(() => {
@@ -350,6 +353,7 @@ function ChartCanvas({
       seriesRef.current = series;
       // Initialise an empty markers plugin we can update on every data change
       markersRef.current = lc.createSeriesMarkers(series, []);
+      setIsChartReady(true);
 
       // Crosshair subscription → tooltip data
       chart.subscribeCrosshairMove((param) => {
@@ -396,11 +400,13 @@ function ChartCanvas({
         markersRef.current = null;
         priceLinesRef.current = [];
       }
+      setIsChartReady(false);
     };
   }, [theme.card, theme.muted, theme.border, theme.positive, theme.danger]);
 
   // ── Push data + markers + price lines whenever bars change ────────
   useEffect(() => {
+    if (!isChartReady) return;
     const series = seriesRef.current;
     if (!series || bars.length === 0) return;
 
@@ -510,7 +516,7 @@ function ChartCanvas({
 
     // Fit content to window so trade is centered
     chartRef.current?.timeScale().fitContent();
-  }, [bars, excursion, trade, theme.accent, theme.positive, theme.danger]);
+  }, [isChartReady, bars, excursion, trade, theme.accent, theme.positive, theme.danger]);
 
   return <View ref={containerRef} style={[styles.chartHost, { borderColor: theme.border }]} />;
 }
