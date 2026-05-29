@@ -9,10 +9,12 @@ import {
 } from 'react-native';
 
 import { supabase } from '@/lib/supabase';
+import { useAppTheme, userMessage } from '@/lib/ui';
 
 type AuthMode = 'sign-in' | 'sign-up';
 
 export default function SignInScreen() {
+  const theme = useAppTheme();
   const [authMode, setAuthMode] = useState<AuthMode>('sign-in');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -55,11 +57,7 @@ export default function SignInScreen() {
         setMessage('Account created. Check your email if confirmation is required.');
       }
     } catch (submitError) {
-      setError(
-        submitError instanceof Error
-          ? submitError.message
-          : 'The auth request failed. Check your connection and try again.'
-      );
+      setError(userMessage(submitError, 'Sign-in failed'));
     } finally {
       setIsSubmitting(false);
     }
@@ -72,11 +70,11 @@ export default function SignInScreen() {
   }
 
   return (
-    <View style={styles.screen}>
-      <View style={styles.panel}>
-        <Text style={styles.eyebrow}>Polaris</Text>
-        <Text style={styles.title}>{isSignUp ? 'Create account' : 'Sign in'}</Text>
-        <Text style={styles.subtitle}>
+    <View style={[styles.screen, { backgroundColor: theme.background }]}>
+      <View style={[styles.panel, { backgroundColor: theme.card, borderColor: theme.border, shadowColor: theme.shadow }]}>
+        <Text style={[styles.eyebrow, { color: theme.accent }]}>Polaris</Text>
+        <Text style={[styles.title, { color: theme.text }]}>{isSignUp ? 'Create account' : 'Sign in'}</Text>
+        <Text style={[styles.subtitle, { color: theme.muted }]}>
           {isSignUp
             ? 'Start your trade journal with email and password.'
             : 'Welcome back. Continue to your trade journal.'}
@@ -89,7 +87,8 @@ export default function SignInScreen() {
             keyboardType="email-address"
             onChangeText={setEmail}
             placeholder="Email"
-            style={styles.input}
+            placeholderTextColor={theme.muted}
+            style={[styles.input, { backgroundColor: theme.mutedSurface, borderColor: theme.border, color: theme.text }]}
             textContentType="emailAddress"
             value={email}
           />
@@ -97,20 +96,22 @@ export default function SignInScreen() {
             autoCapitalize="none"
             onChangeText={setPassword}
             placeholder="Password"
+            placeholderTextColor={theme.muted}
             secureTextEntry
-            style={styles.input}
+            style={[styles.input, { backgroundColor: theme.mutedSurface, borderColor: theme.border, color: theme.text }]}
             textContentType={isSignUp ? 'newPassword' : 'password'}
             value={password}
           />
 
-          {error ? <Text style={styles.error}>{error}</Text> : null}
-          {message ? <Text style={styles.message}>{message}</Text> : null}
+          {error ? <Text style={[styles.error, { color: theme.danger }]}>{error}</Text> : null}
+          {message ? <Text style={[styles.message, { color: theme.positive }]}>{message}</Text> : null}
 
           <Pressable
             disabled={isSubmitting}
             onPress={handleSubmit}
             style={({ pressed }) => [
               styles.primaryButton,
+              { backgroundColor: theme.accent },
               (pressed || isSubmitting) && styles.primaryButtonPressed
             ]}
           >
@@ -123,7 +124,7 @@ export default function SignInScreen() {
         </View>
 
         <Pressable onPress={toggleMode} style={styles.secondaryButton}>
-          <Text style={styles.secondaryButtonText}>
+          <Text style={[styles.secondaryButtonText, { color: theme.accent }]}>
             {isSignUp ? 'Already have an account? Sign in' : 'Need an account? Create one'}
           </Text>
         </Pressable>
@@ -137,32 +138,32 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 24,
-    backgroundColor: '#F8FAFC'
+    padding: 24
   },
   panel: {
     width: '100%',
     maxWidth: 420,
     gap: 12,
-    borderRadius: 8,
-    borderColor: '#E2E8F0',
+    borderRadius: 14,
     borderWidth: 1,
-    backgroundColor: '#FFFFFF',
-    padding: 24
+    padding: 24,
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.08,
+    shadowRadius: 28,
+    elevation: 4
   },
   eyebrow: {
-    color: '#2563EB',
-    fontSize: 14,
+    fontSize: 11,
     fontWeight: '700',
+    letterSpacing: 0.8,
     textTransform: 'uppercase'
   },
   title: {
-    color: '#0F172A',
-    fontSize: 30,
-    fontWeight: '800'
+    fontSize: 28,
+    fontWeight: '700',
+    letterSpacing: -0.5
   },
   subtitle: {
-    color: '#475569',
     fontSize: 15,
     lineHeight: 22
   },
@@ -172,47 +173,45 @@ const styles = StyleSheet.create({
   },
   input: {
     minHeight: 48,
-    borderRadius: 8,
-    borderColor: '#CBD5E1',
+    borderRadius: 12,
     borderWidth: 1,
-    color: '#0F172A',
-    fontSize: 16,
+    fontSize: 15,
     paddingHorizontal: 14,
     paddingVertical: 12
   },
   error: {
-    color: '#B91C1C',
-    fontSize: 14,
-    lineHeight: 20
+    fontSize: 13,
+    fontWeight: '600',
+    lineHeight: 18
   },
   message: {
-    color: '#166534',
-    fontSize: 14,
-    lineHeight: 20
+    fontSize: 13,
+    fontWeight: '600',
+    lineHeight: 18
   },
   primaryButton: {
     minHeight: 48,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 8,
-    backgroundColor: '#2563EB',
+    borderRadius: 12,
     paddingHorizontal: 16
   },
   primaryButtonPressed: {
-    opacity: 0.78
+    opacity: 0.78,
+    transform: [{ scale: 0.985 }]
   },
   primaryButtonText: {
     color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '700'
+    fontSize: 15,
+    fontWeight: '600',
+    letterSpacing: -0.1
   },
   secondaryButton: {
     alignItems: 'center',
     paddingVertical: 6
   },
   secondaryButtonText: {
-    color: '#2563EB',
     fontSize: 14,
-    fontWeight: '700'
+    fontWeight: '600'
   }
 });

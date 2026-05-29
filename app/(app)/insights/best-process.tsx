@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { AppShell, Card, LoadingState, SectionHeading, useAppTheme } from '@/lib/ui';
+import { AppShell, Card, LoadingState, SectionHeading, useAppTheme, userMessage } from '@/lib/ui';
 import { listTradeSummaries, useAccountScope } from '@/lib/trades';
 import { calculateExecutionScores } from '@/lib/trades/backtesting';
+import { seedDemoTrades } from '@/lib/trades/seed-trades';
 import type { ExecutionScore, TradeSummary } from '@/lib/trades';
 
 export default function BestProcessScreen() {
@@ -12,6 +13,23 @@ export default function BestProcessScreen() {
   const [trades, setTrades] = useState<TradeSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isSeeding, setIsSeeding] = useState(false);
+
+  async function reload() {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const loaded = await listTradeSummaries({
+        accountIds: selectedAccountIds ?? undefined,
+        limit: 200
+      });
+      setTrades(loaded);
+    } catch (err) {
+      setError(userMessage(err, "Couldn't load trades"));
+    } finally {
+      setIsLoading(false);
+    }
+  }
 
   useEffect(() => {
     let isActive = true;
@@ -28,7 +46,7 @@ export default function BestProcessScreen() {
 
         if (isActive) setTrades(loaded);
       } catch (err) {
-        if (isActive) setError(err instanceof Error ? err.message : 'Could not load trades.');
+        if (isActive) setError(userMessage(err, "Couldn't load trades"));
       } finally {
         if (isActive) setIsLoading(false);
       }
@@ -76,6 +94,31 @@ export default function BestProcessScreen() {
                 {5 - scores.length === 1 ? '' : 's'} with execution fields (followed plan, timing, stop discipline) to
                 unlock best-process review.
               </Text>
+              {scores.length === 0 ? (
+                <Pressable
+                  disabled={isSeeding}
+                  onPress={async () => {
+                    setIsSeeding(true);
+                    try {
+                      await seedDemoTrades();
+                      await reload();
+                    } catch (err) {
+                      setError(userMessage(err, "Couldn't load demo trades"));
+                    } finally {
+                      setIsSeeding(false);
+                    }
+                  }}
+                  style={({ pressed }) => [
+                    styles.seedButton,
+                    { backgroundColor: theme.mutedSurface, borderColor: theme.border },
+                    pressed && styles.pressed
+                  ]}
+                >
+                  <Text style={[styles.seedButtonText, { color: theme.accent }]}>
+                    {isSeeding ? 'Seeding 20 trades...' : '🧪 Load 20 demo trades with execution data'}
+                  </Text>
+                </Pressable>
+              ) : null}
             </Card>
           ) : null}
 
@@ -238,5 +281,8 @@ const styles = StyleSheet.create({
   psychRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4 },
   psychChip: { borderRadius: 6, paddingHorizontal: 8, paddingVertical: 5, gap: 1 },
   psychChipLabel: { fontSize: 10, fontWeight: '800' },
-  psychChipValue: { fontSize: 13, fontWeight: '800' }
+  psychChipValue: { fontSize: 13, fontWeight: '800' },
+  seedButton: { alignItems: 'center', borderRadius: 8, borderWidth: 1, marginTop: 12, paddingHorizontal: 14, paddingVertical: 10 },
+  seedButtonText: { fontSize: 13, fontWeight: '800' },
+  pressed: { opacity: 0.72 }
 });

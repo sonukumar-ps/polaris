@@ -3,13 +3,14 @@ import type { Href } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { AppShell, PrimaryLinkButton, SectionHeading } from '@/lib/ui';
+import { AppShell, PrimaryLinkButton, SectionHeading, useAppTheme, userMessage } from '@/lib/ui';
 import { countTrades, listTags, listTradeSummaries, useAccountScope } from '@/lib/trades';
 import type { JournalTag, TradeSummary } from '@/lib/trades';
 
 const NEW_TRADE_ROUTE = '/trades/new' as Href;
 
 export default function TradesScreen() {
+  const theme = useAppTheme();
   const params = useLocalSearchParams<{ focus?: string; sourceTradeIds?: string }>();
   const focusLabel = getParamValue(params.focus);
   const {
@@ -68,7 +69,7 @@ export default function TradesScreen() {
           }
         } catch (loadError) {
           if (isActive) {
-            setError(loadError instanceof Error ? loadError.message : 'Could not load trades.');
+            setError(userMessage(loadError, "Couldn't load trades"));
           }
         } finally {
           if (isActive) {
@@ -98,13 +99,13 @@ export default function TradesScreen() {
             title="Saved trades"
           />
           {!isLoadingAccounts ? (
-            <Text style={styles.tradeCount}>
+            <Text style={[styles.tradeCount, { color: theme.muted }]}>
               {totalTrades === null
                 ? 'Counting saved trades...'
                 : `${totalTrades} saved trade${totalTrades === 1 ? '' : 's'} in ${accountScopeLabel}`}
             </Text>
           ) : null}
-          {focusLabel ? <Text style={styles.focusText}>Focus: {focusLabel}</Text> : null}
+          {focusLabel ? <Text style={[styles.focusText, { color: theme.textSecondary }]}>Focus: {focusLabel}</Text> : null}
         </View>
         <PrimaryLinkButton href={NEW_TRADE_ROUTE}>Log trade</PrimaryLinkButton>
       </View>
@@ -116,12 +117,18 @@ export default function TradesScreen() {
               onPress={() => {
                 setSelectedTagId(null);
               }}
-              style={[styles.filterChip, selectedTagId === null && styles.filterChipSelected]}
+              style={[
+                styles.filterChip,
+                {
+                  backgroundColor: selectedTagId === null ? theme.accentMuted : theme.card,
+                  borderColor: selectedTagId === null ? theme.accent : theme.border
+                }
+              ]}
             >
               <Text
                 style={[
                   styles.filterChipText,
-                  selectedTagId === null && styles.filterChipTextSelected
+                  { color: selectedTagId === null ? theme.accent : theme.muted }
                 ]}
               >
                 All
@@ -131,12 +138,18 @@ export default function TradesScreen() {
               <Pressable
                 key={tag.id}
                 onPress={() => setSelectedTagId(tag.id)}
-                style={[styles.filterChip, selectedTagId === tag.id && styles.filterChipSelected]}
+                style={[
+                  styles.filterChip,
+                  {
+                    backgroundColor: selectedTagId === tag.id ? theme.accentMuted : theme.card,
+                    borderColor: selectedTagId === tag.id ? theme.accent : theme.border
+                  }
+                ]}
               >
                 <Text
                   style={[
                     styles.filterChipText,
-                    selectedTagId === tag.id && styles.filterChipTextSelected
+                    { color: selectedTagId === tag.id ? theme.accent : theme.muted }
                   ]}
                 >
                   {tag.name}
@@ -148,57 +161,67 @@ export default function TradesScreen() {
       ) : null}
 
       {isLoading ? (
-        <View style={styles.statePanel}>
-          <ActivityIndicator color="#2563EB" />
-          <Text style={styles.stateText}>Loading trades...</Text>
+        <View style={[styles.statePanel, { backgroundColor: theme.card, borderColor: theme.border }]}>
+          <ActivityIndicator color={theme.accent} />
+          <Text style={[styles.stateText, { color: theme.muted }]}>Loading trades...</Text>
         </View>
       ) : null}
 
       {accountError || error ? (
-        <View style={styles.statePanel}>
-          <Text style={styles.errorText}>{accountError ?? error}</Text>
+        <View style={[styles.statePanel, { backgroundColor: theme.card, borderColor: theme.border }]}>
+          <Text style={[styles.errorText, { color: theme.danger }]}>{accountError ?? error}</Text>
         </View>
       ) : null}
 
       {!isLoading && !accountError && !error && trades.length === 0 ? (
-        <View style={styles.statePanel}>
-          <Text style={styles.stateTitle}>No trades yet</Text>
-          <Text style={styles.stateText}>Log the first manual trade to start building history.</Text>
+        <View style={[styles.statePanel, { backgroundColor: theme.card, borderColor: theme.border }]}>
+          <Text style={[styles.stateTitle, { color: theme.text }]}>No trades yet</Text>
+          <Text style={[styles.stateText, { color: theme.muted }]}>Log the first manual trade to start building history.</Text>
         </View>
       ) : null}
 
       <View style={styles.list}>
-        {trades.map((trade) => (
-          <Link key={trade.id} href={`/trades/${trade.id}` as Href} asChild>
-            <Pressable style={({ pressed }) => [styles.tradeRow, pressed && styles.buttonPressed]}>
-              <View style={styles.tradeMain}>
-                <Text style={styles.symbol}>{trade.asset?.symbol ?? 'Unknown asset'}</Text>
-                <Text style={styles.meta}>
-                  {trade.direction.toUpperCase()} | {trade.status.toUpperCase()} |{' '}
-                  {formatDate(trade.opened_at)}
-                </Text>
-                {trade.strategy ? <Text style={styles.meta}>Strategy: {trade.strategy.name}</Text> : null}
-                {trade.tags.length > 0 ? (
-                  <View style={styles.tags}>
-                    {trade.tags.map((tag) => (
-                      <Text key={tag.id} style={styles.tagChip}>
-                        {tag.name}
-                      </Text>
-                    ))}
-                  </View>
-                ) : null}
-              </View>
-              <View style={styles.tradeNumbers}>
-                <Text style={[styles.price, trade.net_pnl !== null && pnlStyle(trade.net_pnl)]}>
-                  {trade.net_pnl !== null ? formatCurrency(trade.net_pnl) : 'Open'}
-                </Text>
-                <Text style={styles.meta}>
-                  Entry {formatNumber(trade.entry_price)} | Size {formatNumber(trade.quantity)}
-                </Text>
-              </View>
-            </Pressable>
-          </Link>
-        ))}
+        {trades.map((trade) => {
+          const pnlColor =
+            trade.net_pnl === null ? theme.text : trade.net_pnl >= 0 ? theme.positive : theme.danger;
+          return (
+            <Link key={trade.id} href={`/trades/${trade.id}` as Href} asChild>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.tradeRow,
+                  { backgroundColor: theme.card, borderColor: theme.border },
+                  pressed && styles.buttonPressed
+                ]}
+              >
+                <View style={styles.tradeMain}>
+                  <Text style={[styles.symbol, { color: theme.text }]}>{trade.asset?.symbol ?? 'Unknown asset'}</Text>
+                  <Text style={[styles.meta, { color: theme.muted }]}>
+                    {trade.direction.toUpperCase()} | {trade.status.toUpperCase()} |{' '}
+                    {formatDate(trade.opened_at)}
+                  </Text>
+                  {trade.strategy ? <Text style={[styles.meta, { color: theme.muted }]}>Strategy: {trade.strategy.name}</Text> : null}
+                  {trade.tags.length > 0 ? (
+                    <View style={styles.tags}>
+                      {trade.tags.map((tag) => (
+                        <Text key={tag.id} style={[styles.tagChip, { backgroundColor: theme.mutedSurface, color: theme.textSecondary }]}>
+                          {tag.name}
+                        </Text>
+                      ))}
+                    </View>
+                  ) : null}
+                </View>
+                <View style={styles.tradeNumbers}>
+                  <Text style={[styles.price, { color: pnlColor }]}>
+                    {trade.net_pnl !== null ? formatCurrency(trade.net_pnl) : 'Open'}
+                  </Text>
+                  <Text style={[styles.meta, { color: theme.muted }]}>
+                    Entry {formatNumber(trade.entry_price)} | Size {formatNumber(trade.quantity)}
+                  </Text>
+                </View>
+              </Pressable>
+            </Link>
+          );
+        })}
       </View>
     </AppShell>
   );
@@ -228,10 +251,6 @@ function formatCurrency(value: number) {
   }).format(value);
 }
 
-function pnlStyle(value: number) {
-  return value >= 0 ? styles.profit : styles.loss;
-}
-
 function parseSourceTradeIds(value: string | string[] | undefined) {
   const rawValue = getParamValue(value);
 
@@ -255,26 +274,23 @@ const styles = StyleSheet.create({
     maxWidth: 860
   },
   focusText: {
-    color: '#475569',
     fontSize: 15,
     lineHeight: 22
   },
   tradeCount: {
-    color: '#64748B',
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: '500',
     lineHeight: 20
   },
   buttonPressed: {
-    opacity: 0.76
+    opacity: 0.76,
+    transform: [{ scale: 0.985 }]
   },
   statePanel: {
     maxWidth: 860,
     gap: 8,
-    borderRadius: 8,
-    borderColor: '#E2E8F0',
+    borderRadius: 12,
     borderWidth: 1,
-    backgroundColor: '#FFFFFF',
     padding: 18
   },
   filters: {
@@ -285,38 +301,27 @@ const styles = StyleSheet.create({
   filterChip: {
     minHeight: 36,
     justifyContent: 'center',
-    borderRadius: 8,
-    borderColor: '#CBD5E1',
+    borderRadius: 10,
     borderWidth: 1,
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 12
-  },
-  filterChipSelected: {
-    borderColor: '#2563EB',
-    backgroundColor: '#EFF6FF'
+    paddingHorizontal: 14
   },
   filterChipText: {
-    color: '#475569',
     fontSize: 13,
-    fontWeight: '700'
-  },
-  filterChipTextSelected: {
-    color: '#1D4ED8'
+    fontWeight: '600',
+    letterSpacing: -0.1
   },
   stateTitle: {
-    color: '#0F172A',
-    fontSize: 18,
-    fontWeight: '800'
+    fontSize: 17,
+    fontWeight: '700',
+    letterSpacing: -0.2
   },
   stateText: {
-    color: '#475569',
     fontSize: 15,
     lineHeight: 22
   },
   errorText: {
-    color: '#B91C1C',
     fontSize: 14,
-    fontWeight: '700'
+    fontWeight: '600'
   },
   list: {
     maxWidth: 860,
@@ -328,24 +333,21 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 12,
     justifyContent: 'space-between',
-    borderRadius: 8,
-    borderColor: '#E2E8F0',
+    borderRadius: 12,
     borderWidth: 1,
-    backgroundColor: '#FFFFFF',
     padding: 16
   },
   tradeMain: {
     gap: 6
   },
   symbol: {
-    color: '#0F172A',
     fontSize: 20,
-    fontWeight: '800'
+    fontWeight: '700',
+    letterSpacing: -0.3
   },
   meta: {
-    color: '#64748B',
     fontSize: 13,
-    fontWeight: '600'
+    fontWeight: '500'
   },
   tags: {
     flexDirection: 'row',
@@ -356,10 +358,8 @@ const styles = StyleSheet.create({
   tagChip: {
     overflow: 'hidden',
     borderRadius: 6,
-    backgroundColor: '#F1F5F9',
-    color: '#334155',
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '600',
     paddingHorizontal: 8,
     paddingVertical: 4
   },
@@ -368,14 +368,8 @@ const styles = StyleSheet.create({
     gap: 6
   },
   price: {
-    color: '#0F172A',
     fontSize: 16,
-    fontWeight: '700'
-  },
-  profit: {
-    color: '#166534'
-  },
-  loss: {
-    color: '#B91C1C'
+    fontWeight: '700',
+    letterSpacing: -0.2
   }
 });

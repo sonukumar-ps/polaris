@@ -1,4 +1,4 @@
-import { Link } from 'expo-router';
+import { Link, useRouter } from 'expo-router';
 import type { Href } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
@@ -11,7 +11,8 @@ import {
   PrimaryLinkButton,
   SecondaryLinkButton,
   SectionHeading,
-  useAppTheme
+  useAppTheme,
+  userMessage
 } from '@/lib/ui';
 import { supabase } from '@/lib/supabase';
 import {
@@ -19,6 +20,7 @@ import {
   calculateDashboardMetrics,
   calculateStrategyPerformance,
   generateInsightCoach,
+  listStrategies,
   listTradeSummaries,
   useAccountScope
 } from '@/lib/trades';
@@ -34,12 +36,32 @@ const NEW_TRADE_ROUTE = '/trades/new' as Href;
 const TRADES_ROUTE = '/trades' as Href;
 
 export default function HomeScreen() {
+  const router = useRouter();
   const theme = useAppTheme();
   const {
     error: accountError,
     isLoading: isLoadingAccounts,
     selectedAccountIds
   } = useAccountScope();
+
+  // First-run redirect: if user has no strategies, send them to onboarding
+  useEffect(() => {
+    let isActive = true;
+    async function checkOnboarding() {
+      try {
+        const strategies = await listStrategies();
+        if (isActive && strategies.length === 0) {
+          router.replace('/onboarding' as Href);
+        }
+      } catch {
+        // silent — user can navigate manually if check fails
+      }
+    }
+    void checkOnboarding();
+    return () => {
+      isActive = false;
+    };
+  }, []);
   const [trades, setTrades] = useState<TradeSummary[]>([]);
   const [dashboardError, setDashboardError] = useState<string | null>(null);
   const [isLoadingDashboard, setIsLoadingDashboard] = useState(true);
@@ -84,7 +106,7 @@ export default function HomeScreen() {
         }
       } catch (error) {
         if (isActive) {
-          setDashboardError(error instanceof Error ? error.message : 'Could not load dashboard metrics.');
+          setDashboardError(userMessage(error, "Couldn't load dashboard metrics"));
         }
       } finally {
         if (isActive) {
@@ -592,15 +614,16 @@ const styles = StyleSheet.create({
     gap: 10
   },
   insightMetric: {
-    minWidth: 150,
+    minWidth: 130,
     flex: 1,
     gap: 5,
-    borderRadius: 8,
-    padding: 12
+    borderRadius: 12,
+    padding: 14
   },
   insightMetricValue: {
-    fontSize: 20,
-    fontWeight: '800'
+    fontSize: 22,
+    fontWeight: '700',
+    letterSpacing: -0.3
   },
   insightMetricLabel: {
     fontSize: 12,

@@ -4,6 +4,7 @@ import type { Database } from '@/lib/database.types';
 import { calculateRealizedPnl } from './pnl';
 import { getTradePsychology, listTradePsychologies, upsertTradePsychology } from './backtesting/psychology';
 import type { TradePsychologyInput, TradePsychologyRow } from './backtesting/psychology.types';
+import type { EntryOrderType, ManagementOption } from './orders/order.types';
 
 type Tables = Database['public']['Tables'];
 
@@ -24,18 +25,29 @@ type TradeUpdate = Tables['trades']['Update'];
 export type CreateManualTradeInput = {
   accountId: string;
   assetClass?: AssetClass;
+  checklistId?: string | null;
   closedAt?: string | null;
   direction: TradeDirection;
+  entryOrderType?: EntryOrderType | null;
   entryPrice: number;
   exchange?: string | null;
   exitPrice?: number | null;
   fees?: number;
   htfTimeframe?: string | null;
+  intendedEntryPrice?: number | null;
+  isBulletproof?: boolean | null;
+  managementOption?: ManagementOption | null;
   notes?: string | null;
   openedAt: string;
+  orderExpiryAt?: string | null;
+  orderPlacedAt?: string | null;
+  orderTriggered?: boolean | null;
   plannedRr?: number | null;
   psychology?: TradePsychologyInput;
   quantity: number;
+  rrToLastSwing?: number | null;
+  rrToNextSr?: number | null;
+  slippagePips?: number | null;
   stopLossPrice?: number | null;
   strategyId: string;
   symbol: string;
@@ -122,18 +134,29 @@ export async function createManualTrade(input: CreateManualTradeInput): Promise<
   const insert: TradeInsert = {
     account_id: account.id,
     asset_id: asset.id,
+    checklist_id: input.checklistId ?? null,
     closed_at: input.closedAt ?? null,
     direction: input.direction,
+    entry_order_type: input.entryOrderType ?? null,
     entry_price: input.entryPrice,
     exit_price: input.exitPrice ?? null,
     fees: input.fees ?? 0,
     gross_pnl: realizedPnl?.grossPnl ?? null,
     htf_timeframe: input.htfTimeframe ?? null,
+    intended_entry_price: input.intendedEntryPrice ?? null,
+    is_bulletproof: input.isBulletproof ?? false,
+    management_option: input.managementOption ?? null,
     net_pnl: realizedPnl?.netPnl ?? null,
     notes: normalizeOptionalText(input.notes),
     opened_at: input.openedAt,
+    order_expiry_at: input.orderExpiryAt ?? null,
+    order_placed_at: input.orderPlacedAt ?? null,
+    order_triggered: input.orderTriggered ?? false,
     planned_rr: input.plannedRr ?? null,
     quantity: input.quantity,
+    rr_to_last_swing: input.rrToLastSwing ?? null,
+    rr_to_next_sr: input.rrToNextSr ?? null,
+    slippage_pips: input.slippagePips ?? null,
     stop_loss_price: input.stopLossPrice ?? null,
     strategy_id: strategy.id,
     status: input.closedAt && input.exitPrice ? 'closed' : 'open',
@@ -186,18 +209,29 @@ export async function updateManualTrade(input: UpdateManualTradeInput): Promise<
   const update: TradeUpdate = {
     account_id: account.id,
     asset_id: asset.id,
+    checklist_id: input.checklistId ?? null,
     closed_at: input.closedAt ?? null,
     direction: input.direction,
+    entry_order_type: input.entryOrderType ?? null,
     entry_price: input.entryPrice,
     exit_price: input.exitPrice ?? null,
     fees: input.fees ?? 0,
     gross_pnl: realizedPnl?.grossPnl ?? null,
     htf_timeframe: input.htfTimeframe ?? null,
+    intended_entry_price: input.intendedEntryPrice ?? null,
+    is_bulletproof: input.isBulletproof ?? false,
+    management_option: input.managementOption ?? null,
     net_pnl: realizedPnl?.netPnl ?? null,
     notes: normalizeOptionalText(input.notes),
     opened_at: input.openedAt,
+    order_expiry_at: input.orderExpiryAt ?? null,
+    order_placed_at: input.orderPlacedAt ?? null,
+    order_triggered: input.orderTriggered ?? false,
     planned_rr: input.plannedRr ?? null,
     quantity: input.quantity,
+    rr_to_last_swing: input.rrToLastSwing ?? null,
+    rr_to_next_sr: input.rrToNextSr ?? null,
+    slippage_pips: input.slippagePips ?? null,
     stop_loss_price: input.stopLossPrice ?? null,
     strategy_id: strategy.id,
     status: input.closedAt && input.exitPrice ? 'closed' : 'open',

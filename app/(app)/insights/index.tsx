@@ -1,9 +1,9 @@
 import { useRouter } from 'expo-router';
 import type { Href } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { AppShell, Card, LoadingState, SectionHeading, useAppTheme } from '@/lib/ui';
+import { AppShell, Card, LoadingState, SectionHeading, useAppTheme, userMessage } from '@/lib/ui';
 import { generateAllInsights, generateInsightCoach, listTradeSummaries } from '@/lib/trades';
 import type { Insight, TradeSummary } from '@/lib/trades';
 import { useAccountScope } from '@/lib/trades';
@@ -34,7 +34,7 @@ export default function InsightsOverviewScreen() {
         }
       } catch (err) {
         if (isActive) {
-          setError(err instanceof Error ? err.message : 'Could not load trades.');
+          setError(userMessage(err, "Couldn't load trades"));
         }
       } finally {
         if (isActive) {
@@ -92,6 +92,21 @@ export default function InsightsOverviewScreen() {
           ) : null}
         </View>
       ) : null}
+
+      {/* Credits — TradingView Lightweight Charts attribution (license obligation) */}
+      <View style={styles.credits}>
+        <Text style={[styles.creditsText, { color: theme.muted }]}>
+          Reference charts powered by{' '}
+        </Text>
+        <Pressable onPress={() => Linking.openURL('https://www.tradingview.com/')}>
+          <Text style={[styles.creditsLink, { color: theme.accent }]}>
+            TradingView Lightweight Charts
+          </Text>
+        </Pressable>
+        <Text style={[styles.creditsText, { color: theme.muted }]}>
+          {' '}· Forex bars sourced from Dukascopy
+        </Text>
+      </View>
     </AppShell>
   );
 }
@@ -229,5 +244,15 @@ const styles = StyleSheet.create({
   },
   pressed: {
     opacity: 0.72
-  }
+  },
+  credits: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 24,
+    paddingVertical: 12
+  },
+  creditsText: { fontSize: 11 },
+  creditsLink: { fontSize: 11, fontWeight: '600' }
 });

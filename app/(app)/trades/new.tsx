@@ -20,9 +20,10 @@ import {
   SecondaryLinkButton,
   SectionHeading,
   TextField,
-  useAppTheme
+  useAppTheme,
+  userMessage
 } from '@/lib/ui';
-import { calculateRealizedPnl, createManualTrade, createStrategy, listAccounts, listStrategies } from '@/lib/trades';
+import { calculateRealizedPnl, createManualTrade, createStrategy, linkChecklistToTrade, listAccounts, listStrategies } from '@/lib/trades';
 import type { TradingAccount, TradingStrategy } from '@/lib/trades';
 import type {
   EmotionalState,
@@ -34,6 +35,7 @@ import type {
   TradePsychologyInput,
   TradingSession
 } from '@/lib/trades/backtesting/psychology.types';
+import type { EntryOrderType, ManagementOption } from '@/lib/trades/orders/order.types';
 
 type Direction = 'long' | 'short';
 
@@ -58,6 +60,19 @@ type PsychDraft = {
   stopLossPrice: string;
   takeProfitPrice: string;
   timeframe: string;
+};
+
+type OrderDraft = {
+  entryOrderType: EntryOrderType | '';
+  intendedEntryPrice: string;
+  isBulletproof: boolean | null;
+  managementOption: ManagementOption | '';
+  orderExpiryAt: string;
+  orderPlacedAt: string;
+  orderTriggered: boolean | null;
+  rrToLastSwing: string;
+  rrToNextSr: string;
+  slippagePips: string;
 };
 
 type TradeDraft = {
@@ -117,6 +132,19 @@ const emptyPsychDraft: PsychDraft = {
   stopLossPrice: '',
   takeProfitPrice: '',
   timeframe: ''
+};
+
+const emptyOrderDraft: OrderDraft = {
+  entryOrderType: '',
+  intendedEntryPrice: '',
+  isBulletproof: null,
+  managementOption: '',
+  orderExpiryAt: '',
+  orderPlacedAt: '',
+  orderTriggered: null,
+  rrToLastSwing: '',
+  rrToNextSr: '',
+  slippagePips: ''
 };
 
 const emptyStrategyDraft: StrategyDraft = {
@@ -206,10 +234,24 @@ function calculatePreview(draft: TradeDraft) {
 export default function NewTradeScreen() {
   const router = useRouter();
   const theme = useAppTheme();
-  const params = useLocalSearchParams<{ entryPrice?: string; size?: string }>();
+  const params = useLocalSearchParams<{
+    checklistId?: string;
+    direction?: string;
+    entryPrice?: string;
+    notes?: string;
+    plannedRr?: string;
+    rrToLastSwing?: string;
+    rrToNextSr?: string;
+    size?: string;
+    strategyId?: string;
+    symbol?: string;
+  }>();
   const [draft, setDraft] = useState<TradeDraft>(() => createInitialDraft(params));
-  const [psychDraft, setPsychDraft] = useState<PsychDraft>(emptyPsychDraft);
+  const [psychDraft, setPsychDraft] = useState<PsychDraft>(() => createInitialPsychDraft(params));
+  const [orderDraft, setOrderDraft] = useState<OrderDraft>(() => createInitialOrderDraft(params));
   const [isPsychExpanded, setIsPsychExpanded] = useState(false);
+  const [isOrderExpanded, setIsOrderExpanded] = useState(Boolean(params.checklistId));
+  const checklistId = typeof params.checklistId === 'string' ? params.checklistId : null;
   const [accounts, setAccounts] = useState<TradingAccount[]>([]);
   const [strategies, setStrategies] = useState<TradingStrategy[]>([]);
   const [strategyDraft, setStrategyDraft] = useState<StrategyDraft>(emptyStrategyDraft);
@@ -264,7 +306,7 @@ export default function NewTradeScreen() {
         }
       } catch (error) {
         if (isActive) {
-          setSubmitError(error instanceof Error ? error.message : 'Could not load trading accounts.');
+          setSubmitError(userMessage(error, "Couldn't load trading accounts"));
         }
       } finally {
         if (isActive) {
@@ -299,7 +341,7 @@ export default function NewTradeScreen() {
         }
       } catch (error) {
         if (isActive) {
-          setStrategyError(error instanceof Error ? error.message : 'Could not load strategies.');
+          setStrategyError(userMessage(error, "Couldn't load strategies"));
         }
       } finally {
         if (isActive) {
@@ -359,7 +401,7 @@ export default function NewTradeScreen() {
       setStrategyDraft(emptyStrategyDraft);
       setIsStrategyModalOpen(false);
     } catch (error) {
-      setStrategyError(error instanceof Error ? error.message : 'Could not create strategy.');
+      setStrategyError(userMessage(error, "Couldn't create the strategy"));
     } finally {
       setIsCreatingStrategy(false);
     }
@@ -367,6 +409,10 @@ export default function NewTradeScreen() {
 
   function updatePsychField<Key extends keyof PsychDraft>(key: Key, value: PsychDraft[Key]) {
     setPsychDraft((current) => ({ ...current, [key]: value }));
+  }
+
+  function updateOrderField<Key extends keyof OrderDraft>(key: Key, value: OrderDraft[Key]) {
+    setOrderDraft((current) => ({ ...current, [key]: value }));
   }
 
   async function handleSaveTrade() {
@@ -383,17 +429,28 @@ export default function NewTradeScreen() {
     try {
       const savedTrade = await createManualTrade({
         accountId: draft.accountId,
+        checklistId,
         closedAt: draft.closedAt ? toDateTime(draft.closedAt) : null,
         direction: draft.direction,
+        entryOrderType: orderDraft.entryOrderType || null,
         entryPrice: Number(draft.entryPrice),
         exitPrice: draft.exitPrice ? Number(draft.exitPrice) : null,
         fees: Number(draft.fees || '0'),
         htfTimeframe: psychDraft.htfTimeframe || null,
+        intendedEntryPrice: orderDraft.intendedEntryPrice ? Number(orderDraft.intendedEntryPrice) : null,
+        isBulletproof: orderDraft.isBulletproof,
+        managementOption: orderDraft.managementOption || null,
         notes: draft.notes,
         openedAt: toDateTime(draft.openedAt),
+        orderExpiryAt: orderDraft.orderExpiryAt ? toDateTime(orderDraft.orderExpiryAt) : null,
+        orderPlacedAt: orderDraft.orderPlacedAt ? toDateTime(orderDraft.orderPlacedAt) : null,
+        orderTriggered: orderDraft.orderTriggered,
         plannedRr: psychDraft.plannedRr ? Number(psychDraft.plannedRr) : null,
         psychology: buildPsychInput(psychDraft),
         quantity: Number(draft.size),
+        rrToLastSwing: orderDraft.rrToLastSwing ? Number(orderDraft.rrToLastSwing) : null,
+        rrToNextSr: orderDraft.rrToNextSr ? Number(orderDraft.rrToNextSr) : null,
+        slippagePips: orderDraft.slippagePips ? Number(orderDraft.slippagePips) : null,
         stopLossPrice: psychDraft.stopLossPrice ? Number(psychDraft.stopLossPrice) : null,
         strategyId: draft.strategyId,
         symbol: draft.symbol,
@@ -402,9 +459,18 @@ export default function NewTradeScreen() {
         timeframe: psychDraft.timeframe || null
       });
 
+      // If this trade was spawned from a checklist, link them bidirectionally
+      if (checklistId) {
+        try {
+          await linkChecklistToTrade(checklistId, savedTrade.id);
+        } catch {
+          // Non-fatal — the trade is saved, the link just didn't update
+        }
+      }
+
       router.replace(`/trades/${savedTrade.id}` as Href);
     } catch (error) {
-      setSubmitError(error instanceof Error ? error.message : 'Could not save trade.');
+      setSubmitError(userMessage(error, "Couldn't save the trade"));
     } finally {
       setIsSaving(false);
     }
@@ -418,12 +484,26 @@ export default function NewTradeScreen() {
       <AppShell activeRoute="add-trade">
         <View style={styles.headerRow}>
           <SectionHeading
-            eyebrow="New entry"
-            subtitle="Capture execution, context, and emotional state without clutter."
-            title="Add trade"
+            eyebrow={checklistId ? 'From checklist' : 'New entry'}
+            subtitle={
+              checklistId
+                ? 'Pre-filled from your daily checklist. Verify execution prices, then save to place the pending order.'
+                : 'Capture execution, context, and emotional state without clutter.'
+            }
+            title={checklistId ? `Place pending order${draft.symbol ? ` — ${draft.symbol}` : ''}` : 'Add trade'}
           />
           <SecondaryLinkButton href={TRADES_ROUTE}>Saved trades</SecondaryLinkButton>
         </View>
+
+        {checklistId ? (
+          <Card style={{ borderLeftWidth: 3, borderLeftColor: theme.accent }}>
+            <Text style={[styles.sectionTitle, { color: theme.accent }]}>✓ Checklist verified</Text>
+            <Text style={[styles.checklistBannerText, { color: theme.muted }]}>
+              Symbol, direction, strategy, R:R targets, and pending order setup were pre-filled from your saved
+              checklist. Adjust the actual entry/SL/TP prices to match your broker before saving.
+            </Text>
+          </Card>
+        ) : null}
 
         <View style={styles.layout}>
           <Card style={styles.formCard}>
@@ -612,6 +692,13 @@ export default function NewTradeScreen() {
               isExpanded={isPsychExpanded}
               onToggle={() => setIsPsychExpanded((v) => !v)}
               onUpdate={updatePsychField}
+            />
+
+            <OrderManagementSection
+              draft={orderDraft}
+              isExpanded={isOrderExpanded}
+              onToggle={() => setIsOrderExpanded((v) => !v)}
+              onUpdate={updateOrderField}
             />
 
             {submitError ? <Text style={[styles.errorText, { color: theme.danger }]}>{submitError}</Text> : null}
@@ -874,23 +961,65 @@ function StrategyModal({
   );
 }
 
-function createInitialDraft(params: { entryPrice?: string | string[]; size?: string | string[] }): TradeDraft {
+function createInitialDraft(params: {
+  direction?: string | string[];
+  entryPrice?: string | string[];
+  notes?: string | string[];
+  size?: string | string[];
+  strategyId?: string | string[];
+  symbol?: string | string[];
+}): TradeDraft {
+  const directionParam = getParamValue(params.direction);
+  const direction: Direction = directionParam === 'short' ? 'short' : 'long';
+
   return {
     accountId: '',
     closedAt: '',
     customTags: '',
-    direction: 'long',
+    direction,
     emotionTag: '',
     entryPrice: getParamValue(params.entryPrice),
     exitPrice: '',
     fees: '0',
     mistakeTag: '',
-    notes: '',
+    notes: getParamValue(params.notes),
     openedAt: new Date().toISOString().slice(0, 10),
     setupTag: '',
     size: getParamValue(params.size),
-    strategyId: '',
-    symbol: ''
+    strategyId: getParamValue(params.strategyId),
+    symbol: getParamValue(params.symbol)
+  };
+}
+
+function createInitialPsychDraft(params: { plannedRr?: string | string[] }): PsychDraft {
+  return {
+    ...emptyPsychDraft,
+    plannedRr: getParamValue(params.plannedRr)
+  };
+}
+
+function createInitialOrderDraft(params: {
+  checklistId?: string | string[];
+  direction?: string | string[];
+  entryPrice?: string | string[];
+  rrToLastSwing?: string | string[];
+  rrToNextSr?: string | string[];
+}): OrderDraft {
+  const directionParam = getParamValue(params.direction);
+  const orderType =
+    directionParam === 'short' ? 'pending_sell_stop' : directionParam === 'long' ? 'pending_buy_stop' : '';
+
+  const today = new Date();
+  const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000);
+
+  return {
+    ...emptyOrderDraft,
+    entryOrderType: orderType,
+    intendedEntryPrice: getParamValue(params.entryPrice),
+    orderExpiryAt: directionParam ? tomorrow.toISOString().slice(0, 10) : '',
+    orderPlacedAt: directionParam ? today.toISOString().slice(0, 10) : '',
+    rrToLastSwing: getParamValue(params.rrToLastSwing),
+    rrToNextSr: getParamValue(params.rrToNextSr)
   };
 }
 
@@ -1069,6 +1198,131 @@ function PsychologySection({
   );
 }
 
+function countOrderFields(o: OrderDraft): number {
+  return [
+    o.entryOrderType,
+    o.intendedEntryPrice,
+    o.managementOption,
+    o.orderPlacedAt,
+    o.orderExpiryAt,
+    o.orderTriggered !== null ? 'y' : '',
+    o.isBulletproof !== null ? 'y' : '',
+    o.rrToLastSwing,
+    o.rrToNextSr,
+    o.slippagePips
+  ].filter(Boolean).length;
+}
+
+function OrderManagementSection({
+  draft,
+  isExpanded,
+  onToggle,
+  onUpdate
+}: {
+  draft: OrderDraft;
+  isExpanded: boolean;
+  onToggle: () => void;
+  onUpdate: <K extends keyof OrderDraft>(key: K, value: OrderDraft[K]) => void;
+}) {
+  const theme = useAppTheme();
+  const filled = countOrderFields(draft);
+  const total = 10;
+
+  return (
+    <View style={styles.formSection}>
+      <Pressable onPress={onToggle} style={styles.sectionHeaderRow}>
+        <Text style={[styles.sectionTitle, { color: theme.text }]}>
+          Order management{filled > 0 ? ` (${filled}/${total} filled)` : ''}
+        </Text>
+        <Text style={[styles.inlineActionText, { color: theme.muted }]}>{isExpanded ? '▲' : '▼'}</Text>
+      </Pressable>
+
+      {isExpanded ? (
+        <View style={styles.psychFields}>
+          <Text style={[styles.psychSubhead, { color: theme.muted }]}>Order placement</Text>
+
+          <ChipSelector
+            label="Entry order type"
+            labels={{ market: 'Market', pending_buy_stop: 'Buy Stop', pending_sell_stop: 'Sell Stop' }}
+            onSelect={(v) => onUpdate('entryOrderType', v as EntryOrderType | '')}
+            options={['pending_buy_stop', 'pending_sell_stop', 'market']}
+            selected={draft.entryOrderType}
+          />
+          <View style={styles.fieldRow}>
+            <TextField
+              inputMode="decimal"
+              label="Intended entry price"
+              onChangeText={(v) => onUpdate('intendedEntryPrice', v)}
+              placeholder="1.2650"
+              value={draft.intendedEntryPrice}
+            />
+            <TextField
+              inputMode="decimal"
+              label="Slippage (pips)"
+              onChangeText={(v) => onUpdate('slippagePips', v)}
+              placeholder="0.3"
+              value={draft.slippagePips}
+            />
+          </View>
+          <View style={styles.fieldRow}>
+            <TextField
+              label="Order placed"
+              onChangeText={(v) => onUpdate('orderPlacedAt', v)}
+              placeholder="2026-05-27"
+              value={draft.orderPlacedAt}
+            />
+            <TextField
+              label="Order expiry"
+              onChangeText={(v) => onUpdate('orderExpiryAt', v)}
+              placeholder="2026-05-28"
+              value={draft.orderExpiryAt}
+            />
+          </View>
+          <YesNoToggle
+            label="Order triggered?"
+            onSelect={(v) => onUpdate('orderTriggered', v)}
+            selected={draft.orderTriggered}
+          />
+
+          <Text style={[styles.psychSubhead, { color: theme.muted }]}>Trade management</Text>
+
+          <ChipSelector
+            label="Management option"
+            labels={{ advanced: 'Advanced', basic: 'Basic', intermediate: 'Intermediate' }}
+            onSelect={(v) => onUpdate('managementOption', v as ManagementOption | '')}
+            options={['basic', 'intermediate', 'advanced']}
+            selected={draft.managementOption}
+          />
+          <YesNoToggle
+            label="Bulletproof (SL at breakeven+)?"
+            onSelect={(v) => onUpdate('isBulletproof', v)}
+            selected={draft.isBulletproof}
+          />
+
+          <Text style={[styles.psychSubhead, { color: theme.muted }]}>R:R targets</Text>
+
+          <View style={styles.fieldRow}>
+            <TextField
+              inputMode="decimal"
+              label="R:R to last swing"
+              onChangeText={(v) => onUpdate('rrToLastSwing', v)}
+              placeholder="1.5"
+              value={draft.rrToLastSwing}
+            />
+            <TextField
+              inputMode="decimal"
+              label="R:R to next S/R"
+              onChangeText={(v) => onUpdate('rrToNextSr', v)}
+              placeholder="2.0"
+              value={draft.rrToNextSr}
+            />
+          </View>
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
 function ChipSelector({
   label,
   labels = {},
@@ -1183,11 +1437,11 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start'
   },
   formCard: {
-    minWidth: 300,
+    minWidth: 260,
     flex: 2
   },
   previewCard: {
-    minWidth: 260,
+    minWidth: 240,
     flex: 1
   },
   formSection: {
@@ -1409,5 +1663,10 @@ const styles = StyleSheet.create({
   chipText: {
     fontSize: 13,
     fontWeight: '800'
+  },
+  checklistBannerText: {
+    fontSize: 13,
+    lineHeight: 19,
+    marginTop: 4
   }
 });

@@ -161,32 +161,181 @@ export type Database = {
           },
         ]
       }
+      fx_ohlcv: {
+        Row: {
+          close: number
+          high: number
+          low: number
+          open: number
+          pair: string
+          timeframe: string
+          ts: string
+          volume: number | null
+        }
+        Insert: {
+          close: number
+          high: number
+          low: number
+          open: number
+          pair: string
+          timeframe: string
+          ts: string
+          volume?: number | null
+        }
+        Update: {
+          close?: number
+          high?: number
+          low?: number
+          open?: number
+          pair?: string
+          timeframe?: string
+          ts?: string
+          volume?: number | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           base_currency: string
+          circuit_breaker_enabled: boolean
           created_at: string
           display_name: string | null
           id: string
+          max_daily_loss_amount: number | null
+          max_daily_loss_pct: number | null
+          max_weekly_loss_amount: number | null
+          max_weekly_loss_pct: number | null
           timezone: string
           updated_at: string
         }
         Insert: {
           base_currency?: string
+          circuit_breaker_enabled?: boolean
           created_at?: string
           display_name?: string | null
           id: string
+          max_daily_loss_amount?: number | null
+          max_daily_loss_pct?: number | null
+          max_weekly_loss_amount?: number | null
+          max_weekly_loss_pct?: number | null
           timezone?: string
           updated_at?: string
         }
         Update: {
           base_currency?: string
+          circuit_breaker_enabled?: boolean
           created_at?: string
           display_name?: string | null
           id?: string
+          max_daily_loss_amount?: number | null
+          max_daily_loss_pct?: number | null
+          max_weekly_loss_amount?: number | null
+          max_weekly_loss_pct?: number | null
           timezone?: string
           updated_at?: string
         }
         Relationships: []
+      }
+      sr_levels: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          last_touched_date: string | null
+          level_role: string | null
+          notes: string | null
+          price: number
+          symbol: string
+          touch_count: number
+          type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          last_touched_date?: string | null
+          level_role?: string | null
+          notes?: string | null
+          price: number
+          symbol: string
+          touch_count?: number
+          type: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          last_touched_date?: string | null
+          level_role?: string | null
+          notes?: string | null
+          price?: number
+          symbol?: string
+          touch_count?: number
+          type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sr_levels_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stop_loss_history: {
+        Row: {
+          created_at: string
+          id: string
+          moved_at: string
+          new_price: number
+          old_price: number
+          reason: string | null
+          trade_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          moved_at?: string
+          new_price: number
+          old_price: number
+          reason?: string | null
+          trade_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          moved_at?: string
+          new_price?: number
+          old_price?: number
+          reason?: string | null
+          trade_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stop_loss_history_trade_id_fkey"
+            columns: ["trade_id"]
+            isOneToOne: false
+            referencedRelation: "trades"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stop_loss_history_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       strategies: {
         Row: {
@@ -231,6 +380,142 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "strategies_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      strategy_checklists: {
+        Row: {
+          candlestick_pattern: string | null
+          checklist_date: string
+          correlation_pairs: string[] | null
+          created_at: string
+          deceleration_evidence: string | null
+          deceleration_pass: boolean | null
+          decision: string | null
+          decision_reason: string | null
+          direction: string | null
+          ema_zone_visited_pass: boolean | null
+          ema50_position_pass: boolean | null
+          emotional_rating: number | null
+          id: string
+          indicator_signal: string | null
+          market_condition_note: string | null
+          market_condition_pass: boolean | null
+          market_phase: string | null
+          market_phase_pass: boolean | null
+          mtf_confirmation: string | null
+          news_check_clear: boolean | null
+          reversal_pattern: string | null
+          reversal_sr_pass: boolean | null
+          rr_on_trade: number | null
+          rr_to_last_swing: number | null
+          rr_to_next_sr: number | null
+          sr_reaction_pass: boolean | null
+          sr_touch_count: number | null
+          sr_types: string[] | null
+          strategy_id: string
+          strategy_type: string
+          symbol: string
+          total_sr_touches: number | null
+          trade_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          candlestick_pattern?: string | null
+          checklist_date: string
+          correlation_pairs?: string[] | null
+          created_at?: string
+          deceleration_evidence?: string | null
+          deceleration_pass?: boolean | null
+          decision?: string | null
+          decision_reason?: string | null
+          direction?: string | null
+          ema_zone_visited_pass?: boolean | null
+          ema50_position_pass?: boolean | null
+          emotional_rating?: number | null
+          id?: string
+          indicator_signal?: string | null
+          market_condition_note?: string | null
+          market_condition_pass?: boolean | null
+          market_phase?: string | null
+          market_phase_pass?: boolean | null
+          mtf_confirmation?: string | null
+          news_check_clear?: boolean | null
+          reversal_pattern?: string | null
+          reversal_sr_pass?: boolean | null
+          rr_on_trade?: number | null
+          rr_to_last_swing?: number | null
+          rr_to_next_sr?: number | null
+          sr_reaction_pass?: boolean | null
+          sr_touch_count?: number | null
+          sr_types?: string[] | null
+          strategy_id: string
+          strategy_type?: string
+          symbol: string
+          total_sr_touches?: number | null
+          trade_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          candlestick_pattern?: string | null
+          checklist_date?: string
+          correlation_pairs?: string[] | null
+          created_at?: string
+          deceleration_evidence?: string | null
+          deceleration_pass?: boolean | null
+          decision?: string | null
+          decision_reason?: string | null
+          direction?: string | null
+          ema_zone_visited_pass?: boolean | null
+          ema50_position_pass?: boolean | null
+          emotional_rating?: number | null
+          id?: string
+          indicator_signal?: string | null
+          market_condition_note?: string | null
+          market_condition_pass?: boolean | null
+          market_phase?: string | null
+          market_phase_pass?: boolean | null
+          mtf_confirmation?: string | null
+          news_check_clear?: boolean | null
+          reversal_pattern?: string | null
+          reversal_sr_pass?: boolean | null
+          rr_on_trade?: number | null
+          rr_to_last_swing?: number | null
+          rr_to_next_sr?: number | null
+          sr_reaction_pass?: boolean | null
+          sr_touch_count?: number | null
+          sr_types?: string[] | null
+          strategy_id?: string
+          strategy_type?: string
+          symbol?: string
+          total_sr_touches?: number | null
+          trade_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "strategy_checklists_strategy_id_fkey"
+            columns: ["strategy_id"]
+            isOneToOne: false
+            referencedRelation: "strategies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "strategy_checklists_trade_id_fkey"
+            columns: ["trade_id"]
+            isOneToOne: false
+            referencedRelation: "trades"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "strategy_checklists_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
@@ -436,81 +721,120 @@ export type Database = {
         Row: {
           account_id: string
           asset_id: string
+          checklist_id: string | null
           closed_at: string | null
           created_at: string
           direction: Database["public"]["Enums"]["trade_direction"]
+          entry_order_type: string | null
           entry_price: number
           exit_price: number | null
           fees: number
           gross_pnl: number | null
           htf_timeframe: string | null
           id: string
+          intended_entry_price: number | null
+          is_bulletproof: boolean | null
+          management_option: string | null
           net_pnl: number | null
           notes: string | null
           opened_at: string
+          order_expired: boolean | null
+          order_expiry_at: string | null
+          order_placed_at: string | null
+          order_triggered: boolean | null
           planned_rr: number | null
           quantity: number
           r_multiple: number | null
           risk_amount: number | null
+          rr_to_last_swing: number | null
+          rr_to_next_sr: number | null
+          slippage_pips: number | null
           status: Database["public"]["Enums"]["trade_status"]
           stop_loss_price: number | null
           strategy_id: string | null
           take_profit_price: number | null
           timeframe: string | null
+          trailing_stop_count: number | null
           updated_at: string
           user_id: string
         }
         Insert: {
           account_id: string
           asset_id: string
+          checklist_id?: string | null
           closed_at?: string | null
           created_at?: string
           direction: Database["public"]["Enums"]["trade_direction"]
+          entry_order_type?: string | null
           entry_price: number
           exit_price?: number | null
           fees?: number
           gross_pnl?: number | null
           htf_timeframe?: string | null
           id?: string
+          intended_entry_price?: number | null
+          is_bulletproof?: boolean | null
+          management_option?: string | null
           net_pnl?: number | null
           notes?: string | null
           opened_at: string
+          order_expired?: boolean | null
+          order_expiry_at?: string | null
+          order_placed_at?: string | null
+          order_triggered?: boolean | null
           planned_rr?: number | null
           quantity: number
           r_multiple?: number | null
           risk_amount?: number | null
+          rr_to_last_swing?: number | null
+          rr_to_next_sr?: number | null
+          slippage_pips?: number | null
           status?: Database["public"]["Enums"]["trade_status"]
           stop_loss_price?: number | null
           strategy_id?: string | null
           take_profit_price?: number | null
           timeframe?: string | null
+          trailing_stop_count?: number | null
           updated_at?: string
           user_id: string
         }
         Update: {
           account_id?: string
           asset_id?: string
+          checklist_id?: string | null
           closed_at?: string | null
           created_at?: string
           direction?: Database["public"]["Enums"]["trade_direction"]
+          entry_order_type?: string | null
           entry_price?: number
           exit_price?: number | null
           fees?: number
           gross_pnl?: number | null
           htf_timeframe?: string | null
           id?: string
+          intended_entry_price?: number | null
+          is_bulletproof?: boolean | null
+          management_option?: string | null
           net_pnl?: number | null
           notes?: string | null
           opened_at?: string
+          order_expired?: boolean | null
+          order_expiry_at?: string | null
+          order_placed_at?: string | null
+          order_triggered?: boolean | null
           planned_rr?: number | null
           quantity?: number
           r_multiple?: number | null
           risk_amount?: number | null
+          rr_to_last_swing?: number | null
+          rr_to_next_sr?: number | null
+          slippage_pips?: number | null
           status?: Database["public"]["Enums"]["trade_status"]
           stop_loss_price?: number | null
           strategy_id?: string | null
           take_profit_price?: number | null
           timeframe?: string | null
+          trailing_stop_count?: number | null
           updated_at?: string
           user_id?: string
         }
@@ -527,6 +851,13 @@ export type Database = {
             columns: ["asset_id"]
             isOneToOne: false
             referencedRelation: "assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trades_checklist_id_fkey"
+            columns: ["checklist_id"]
+            isOneToOne: false
+            referencedRelation: "strategy_checklists"
             referencedColumns: ["id"]
           },
           {

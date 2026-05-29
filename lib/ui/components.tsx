@@ -18,15 +18,19 @@ import {
 
 import { useAccountScope } from '@/lib/trades';
 
+import { DrawdownBanner } from './drawdown-banner';
 import { useAppTheme } from './theme';
 import type { AppTheme } from './theme';
+import { useThemeMode } from './theme-provider';
 
-type AppRoute = 'dashboard' | 'add-trade' | 'trades' | 'risk' | 'insights';
+type AppRoute = 'dashboard' | 'add-trade' | 'checklist' | 'trades' | 'risk' | 'insights' | 'levels';
 
 const navigationItems: { href: Href; key: AppRoute; label: string }[] = [
   { href: '/home' as Href, key: 'dashboard', label: 'Dashboard' },
+  { href: '/checklist' as Href, key: 'checklist', label: 'Checklist' },
   { href: '/trades/new' as Href, key: 'add-trade', label: 'Add Trade' },
   { href: '/trades' as Href, key: 'trades', label: 'Trades' },
+  { href: '/levels' as Href, key: 'levels', label: 'S/R Levels' },
   { href: '/insights' as Href, key: 'insights', label: 'Insights' },
   { href: '/risk' as Href, key: 'risk', label: 'Risk' }
 ];
@@ -41,15 +45,21 @@ export function AppShell({
   const theme = useAppTheme();
   const { width } = useWindowDimensions();
   const showSidebar = width >= 900;
+  const isCompact = width < 600;
 
   return (
     <View style={[styles.shell, { backgroundColor: theme.background }]}>
       {showSidebar ? <Sidebar activeRoute={activeRoute} theme={theme} /> : null}
       <View style={styles.appPane}>
         <AccountScopeBar theme={theme} />
+        <DrawdownBanner />
         <ScrollView
           style={styles.scroll}
-          contentContainerStyle={[styles.content, showSidebar ? styles.contentWithSidebar : null]}
+          contentContainerStyle={[
+            styles.content,
+            isCompact ? styles.contentCompact : null,
+            showSidebar ? styles.contentWithSidebar : null
+          ]}
         >
           <FadeInView>{children}</FadeInView>
         </ScrollView>
@@ -74,7 +84,7 @@ export function Card({
         {
           backgroundColor: theme.card,
           borderColor: theme.border,
-          shadowColor: theme.isDark ? '#000000' : '#D8D8D2'
+          shadowColor: theme.shadow
         },
         StyleSheet.flatten(style)
       ]}
@@ -177,6 +187,7 @@ export function TextField({
   error,
   inputMode = 'text',
   label,
+  labelExtra,
   multiline = false,
   onChangeText,
   placeholder,
@@ -186,6 +197,7 @@ export function TextField({
   error?: string;
   inputMode?: 'decimal' | 'text';
   label: string;
+  labelExtra?: ReactNode;
   multiline?: boolean;
   onChangeText: (value: string) => void;
   placeholder: string;
@@ -195,7 +207,12 @@ export function TextField({
 
   return (
     <View style={styles.field}>
-      <Text style={[styles.fieldLabel, { color: theme.muted }]}>{label}</Text>
+      {label || labelExtra ? (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          {label ? <Text style={[styles.fieldLabel, { color: theme.muted }]}>{label}</Text> : null}
+          {labelExtra}
+        </View>
+      ) : null}
       <TextInput
         autoCapitalize={autoCapitalize}
         inputMode={inputMode}
@@ -257,10 +274,10 @@ export function FadeInView({ children }: { children: ReactNode }) {
 
 function Sidebar({ activeRoute, theme }: { activeRoute: AppRoute; theme: AppTheme }) {
   return (
-    <View style={[styles.sidebar, { borderColor: theme.border }]}>
+    <View style={[styles.sidebar, { borderColor: theme.border, backgroundColor: theme.background }]}>
       <View>
         <Text style={[styles.brand, { color: theme.text }]}>Polaris</Text>
-        <Text style={[styles.brandMeta, { color: theme.muted }]}>Trade Journal</Text>
+        <Text style={[styles.brandMeta, { color: theme.muted }]}>Trading journal</Text>
       </View>
       <View style={styles.navList}>
         {navigationItems.map((item) => {
@@ -273,17 +290,66 @@ function Sidebar({ activeRoute, theme }: { activeRoute: AppRoute; theme: AppThem
               style={StyleSheet.flatten([
                 styles.navItem,
                 {
-                  backgroundColor: isActive ? theme.mutedSurface : 'transparent'
+                  backgroundColor: isActive ? theme.accentMuted : 'transparent'
                 }
               ])}
             >
-              <Text style={[styles.navText, { color: isActive ? theme.accent : theme.muted }]}>
+              <Text
+                style={[
+                  styles.navText,
+                  {
+                    color: isActive ? theme.accent : theme.textSecondary,
+                    fontWeight: isActive ? '600' : '500'
+                  }
+                ]}
+              >
                 {item.label}
               </Text>
             </Link>
           );
         })}
       </View>
+    </View>
+  );
+}
+
+function ThemeToggle({ theme }: { theme: AppTheme }) {
+  const { mode, setMode } = useThemeMode();
+
+  const options: { icon: string; label: string; value: 'system' | 'light' | 'dark' }[] = [
+    { icon: '☀', label: 'Light', value: 'light' },
+    { icon: '◐', label: 'Auto', value: 'system' },
+    { icon: '☾', label: 'Dark', value: 'dark' }
+  ];
+
+  return (
+    <View style={[styles.themeToggle, { backgroundColor: theme.mutedSurface, borderColor: theme.border }]}>
+      {options.map((opt) => {
+        const isSelected = mode === opt.value;
+        return (
+          <Pressable
+            key={opt.value}
+            accessibilityLabel={`${opt.label} theme`}
+            onPress={() => setMode(opt.value)}
+            style={({ pressed }) => [
+              styles.themeOption,
+              {
+                backgroundColor: isSelected ? theme.card : 'transparent'
+              },
+              pressed && styles.pressed
+            ]}
+          >
+            <Text
+              style={[
+                styles.themeOptionIcon,
+                { color: isSelected ? theme.accent : theme.muted }
+              ]}
+            >
+              {opt.icon}
+            </Text>
+          </Pressable>
+        );
+      })}
     </View>
   );
 }
@@ -304,7 +370,9 @@ function AccountScopeBar({ theme }: { theme: AppTheme }) {
         <Text style={[styles.scopeTitle, { color: theme.text }]}>Portfolio view</Text>
         <Text style={[styles.scopeMeta, { color: theme.muted }]}>Performance scope</Text>
       </View>
-      <View style={styles.scopeSelector}>
+      <View style={styles.scopeRight}>
+        <ThemeToggle theme={theme} />
+        <View style={styles.scopeSelector}>
         <Pressable
           disabled={isLoading}
           onPress={() => setIsOpen((current) => !current)}
@@ -326,7 +394,7 @@ function AccountScopeBar({ theme }: { theme: AppTheme }) {
           <Text style={[styles.scopeChevron, { color: theme.muted }]}>{isOpen ? '^' : 'v'}</Text>
         </Pressable>
         {isOpen ? (
-          <View style={[styles.scopePanel, { backgroundColor: theme.card, borderColor: theme.border }]}>
+          <View style={[styles.scopePanel, { backgroundColor: theme.card, borderColor: theme.border, shadowColor: theme.shadow }]}>
             <Text style={[styles.scopePanelTitle, { color: theme.text }]}>Dashboard statistics</Text>
             <Text style={[styles.scopePanelMeta, { color: theme.muted }]}>Select one or combine accounts.</Text>
             {error ? <Text style={[styles.scopeError, { color: theme.danger }]}>{error}</Text> : null}
@@ -366,6 +434,7 @@ function AccountScopeBar({ theme }: { theme: AppTheme }) {
             </View>
           </View>
         ) : null}
+        </View>
       </View>
     </View>
   );
@@ -382,38 +451,46 @@ const styles = StyleSheet.create({
   scopeBar: {
     minHeight: 68,
     flexDirection: 'row',
-    gap: 18,
+    flexWrap: 'wrap',
+    gap: 14,
     alignItems: 'center',
     justifyContent: 'space-between',
     borderBottomWidth: 1,
     paddingHorizontal: 20,
-    paddingVertical: 10,
+    paddingVertical: 12,
     zIndex: 50
   },
   scopeTitle: {
     fontSize: 15,
-    fontWeight: '800'
+    fontWeight: '600',
+    letterSpacing: -0.2
   },
   scopeMeta: {
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '500',
     marginTop: 2
+  },
+  scopeRight: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: 12
   },
   scopeSelector: {
     position: 'relative',
     zIndex: 60
   },
   scopeButton: {
-    minHeight: 48,
-    minWidth: 194,
+    minHeight: 46,
+    minWidth: 200,
     flexDirection: 'row',
     gap: 12,
     alignItems: 'center',
     justifyContent: 'space-between',
-    borderRadius: 8,
+    borderRadius: 12,
     borderWidth: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 6
+    paddingHorizontal: 14,
+    paddingVertical: 8
   },
   scopeButtonCopy: {
     flex: 1,
@@ -421,12 +498,14 @@ const styles = StyleSheet.create({
   },
   scopeButtonLabel: {
     fontSize: 10,
-    fontWeight: '800',
+    fontWeight: '600',
+    letterSpacing: 0.6,
     textTransform: 'uppercase'
   },
   scopeButtonValue: {
     fontSize: 14,
-    fontWeight: '800'
+    fontWeight: '600',
+    letterSpacing: -0.2
   },
   scopeChevron: {
     fontSize: 14,
@@ -438,59 +517,65 @@ const styles = StyleSheet.create({
     right: 0,
     width: 320,
     gap: 10,
-    borderRadius: 8,
+    borderRadius: 14,
     borderWidth: 1,
-    padding: 16,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.14,
-    shadowRadius: 20,
+    padding: 18,
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.16,
+    shadowRadius: 32,
+    elevation: 12,
     zIndex: 80
   },
   scopePanelTitle: {
     fontSize: 17,
-    fontWeight: '800'
+    fontWeight: '700',
+    letterSpacing: -0.3
   },
   scopePanelMeta: {
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '500',
     marginTop: -6
   },
   scopeError: {
     fontSize: 12,
-    fontWeight: '700'
+    fontWeight: '600'
   },
   scopeOptions: {
-    gap: 8
+    gap: 6
   },
   scopeOption: {
-    minHeight: 52,
+    minHeight: 50,
     flexDirection: 'row',
     gap: 10,
     alignItems: 'center',
     justifyContent: 'space-between',
-    borderRadius: 8,
+    borderRadius: 10,
     borderWidth: 1,
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     paddingVertical: 10
   },
   scopeOptionName: {
     fontSize: 14,
-    fontWeight: '800'
+    fontWeight: '600',
+    letterSpacing: -0.1
   },
   scopeOptionMeta: {
     fontSize: 12,
-    fontWeight: '700'
+    fontWeight: '500'
   },
   scopeOptionState: {
     fontSize: 12,
-    fontWeight: '800'
+    fontWeight: '600'
   },
   scroll: {
     flex: 1
   },
   content: {
     padding: 20,
+    paddingBottom: 44
+  },
+  contentCompact: {
+    padding: 16,
     paddingBottom: 44
   },
   contentWithSidebar: {
@@ -503,67 +588,92 @@ const styles = StyleSheet.create({
     alignSelf: 'center'
   },
   sidebar: {
-    width: 248,
-    gap: 28,
+    width: 232,
+    gap: 32,
     borderRightWidth: 1,
-    padding: 24,
-    paddingTop: 36
+    padding: 22,
+    paddingTop: 40
+  },
+  themeToggle: {
+    flexDirection: 'row',
+    gap: 2,
+    borderRadius: 999,
+    borderWidth: 1,
+    padding: 3
+  },
+  themeOption: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 999,
+    paddingVertical: 7
+  },
+  themeOptionIcon: {
+    fontSize: 14,
+    fontWeight: '600'
   },
   brand: {
-    fontSize: 24,
-    fontWeight: '800'
+    fontSize: 22,
+    fontWeight: '700',
+    letterSpacing: -0.4
   },
   brandMeta: {
-    fontSize: 13,
-    fontWeight: '700',
-    marginTop: 4
+    fontSize: 12,
+    fontWeight: '500',
+    marginTop: 3
   },
   navList: {
-    gap: 6
+    gap: 2
   },
   navItem: {
-    minHeight: 40,
+    minHeight: 38,
     justifyContent: 'center',
-    borderRadius: 8,
-    paddingHorizontal: 12
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 6
   },
   navText: {
     fontSize: 14,
-    fontWeight: '700'
+    fontWeight: '500',
+    letterSpacing: -0.1
   },
   card: {
     gap: 14,
-    borderRadius: 8,
+    borderRadius: 14,
     borderWidth: 1,
-    padding: 18,
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.08,
-    shadowRadius: 24
+    padding: 20,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.06,
+    shadowRadius: 28,
+    elevation: 4
   },
   heading: {
-    gap: 8
+    gap: 6
   },
   eyebrow: {
-    fontSize: 13,
-    fontWeight: '800',
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.8,
     textTransform: 'uppercase'
   },
   title: {
-    fontSize: 36,
-    fontWeight: '800',
-    lineHeight: 42
+    fontSize: 32,
+    fontWeight: '700',
+    letterSpacing: -0.6,
+    lineHeight: 38
   },
   subtitle: {
     maxWidth: 720,
-    fontSize: 16,
-    lineHeight: 24
+    fontSize: 15,
+    fontWeight: '400',
+    lineHeight: 22
   },
   primaryButton: {
-    minHeight: 44,
+    minHeight: 46,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 8,
-    paddingHorizontal: 16
+    borderRadius: 12,
+    paddingHorizontal: 18
   },
   linkButton: {
     display: 'flex',
@@ -572,22 +682,25 @@ const styles = StyleSheet.create({
   primaryButtonText: {
     color: '#FFFFFF',
     fontSize: 15,
-    fontWeight: '800'
+    fontWeight: '600',
+    letterSpacing: -0.1
   },
   secondaryButton: {
-    minHeight: 44,
+    minHeight: 46,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 8,
+    borderRadius: 12,
     borderWidth: 1,
-    paddingHorizontal: 16
+    paddingHorizontal: 18
   },
   secondaryButtonText: {
     fontSize: 15,
-    fontWeight: '800'
+    fontWeight: '600',
+    letterSpacing: -0.1
   },
   pressed: {
-    opacity: 0.72
+    opacity: 0.72,
+    transform: [{ scale: 0.985 }]
   },
   field: {
     flex: 1,
@@ -595,36 +708,38 @@ const styles = StyleSheet.create({
     minWidth: 220
   },
   fieldLabel: {
-    fontSize: 13,
-    fontWeight: '800'
+    fontSize: 12,
+    fontWeight: '600',
+    letterSpacing: 0.1
   },
   input: {
     minHeight: 48,
-    borderRadius: 8,
+    borderRadius: 12,
     borderWidth: 1,
-    fontSize: 16,
-    paddingHorizontal: 13,
-    paddingVertical: 11
+    fontSize: 15,
+    paddingHorizontal: 14,
+    paddingVertical: 12
   },
   textArea: {
     minHeight: 104,
     textAlignVertical: 'top'
   },
   errorText: {
-    fontSize: 13,
-    fontWeight: '700'
+    fontSize: 12,
+    fontWeight: '600'
   },
   state: {
     minHeight: 150,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    borderRadius: 8,
-    padding: 18
+    borderRadius: 12,
+    padding: 20
   },
   stateTitle: {
     fontSize: 17,
-    fontWeight: '800'
+    fontWeight: '700',
+    letterSpacing: -0.2
   },
   stateText: {
     fontSize: 14,
