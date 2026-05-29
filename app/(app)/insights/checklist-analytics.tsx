@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { AppShell, Card, InfoTip, LoadingState, SectionHeading, useAppTheme } from '@/lib/ui';
+import { AppShell, Card, InfoTip, LoadingState, SectionHeading, useAppTheme, userMessage } from '@/lib/ui';
 import type { GlossaryTerm } from '@/lib/ui';
 import {
   getChecklistAnalytics,
@@ -43,7 +43,7 @@ export default function ChecklistAnalyticsScreen() {
       setSummary(s);
       setBreakdown(b);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not load analytics.');
+      setError(userMessage(err, "Couldn't load analytics"));
     } finally {
       setIsLoading(false);
     }
@@ -117,7 +117,7 @@ export default function ChecklistAnalyticsScreen() {
                 );
                 await reload();
               } catch (err) {
-                setError(err instanceof Error ? err.message : 'Could not seed data.');
+                setError(userMessage(err, "Couldn't load demo data"));
               } finally {
                 setIsSeeding(false);
               }

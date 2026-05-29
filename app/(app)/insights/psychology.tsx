@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { AppShell, Card, LoadingState, SectionHeading, useAppTheme } from '@/lib/ui';
+import { AppShell, Card, LoadingState, SectionHeading, useAppTheme, userMessage } from '@/lib/ui';
 import { listTradeSummaries, useAccountScope } from '@/lib/trades';
 import { seedDemoTrades } from '@/lib/trades/seed-trades';
 import {
@@ -36,7 +36,7 @@ export default function PsychologyScreen() {
 
         if (isActive) setTrades(loaded);
       } catch (err) {
-        if (isActive) setError(err instanceof Error ? err.message : 'Could not load trades.');
+        if (isActive) setError(userMessage(err, "Couldn't load trades"));
       } finally {
         if (isActive) setIsLoading(false);
       }
@@ -87,7 +87,7 @@ export default function PsychologyScreen() {
                 });
                 setTrades(loaded);
               } catch (err) {
-                setError(err instanceof Error ? err.message : 'Could not seed demo trades.');
+                setError(userMessage(err, "Couldn't load demo trades"));
               } finally {
                 setIsSeeding(false);
               }

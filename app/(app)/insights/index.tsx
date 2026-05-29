@@ -3,7 +3,7 @@ import type { Href } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { AppShell, Card, LoadingState, SectionHeading, useAppTheme } from '@/lib/ui';
+import { AppShell, Card, LoadingState, SectionHeading, useAppTheme, userMessage } from '@/lib/ui';
 import { generateAllInsights, generateInsightCoach, listTradeSummaries } from '@/lib/trades';
 import type { Insight, TradeSummary } from '@/lib/trades';
 import { useAccountScope } from '@/lib/trades';
@@ -34,7 +34,7 @@ export default function InsightsOverviewScreen() {
         }
       } catch (err) {
         if (isActive) {
-          setError(err instanceof Error ? err.message : 'Could not load trades.');
+          setError(userMessage(err, "Couldn't load trades"));
         }
       } finally {
         if (isActive) {

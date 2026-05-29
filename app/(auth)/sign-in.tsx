@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 
 import { supabase } from '@/lib/supabase';
-import { useAppTheme } from '@/lib/ui';
+import { useAppTheme, userMessage } from '@/lib/ui';
 
 type AuthMode = 'sign-in' | 'sign-up';
 
@@ -57,11 +57,7 @@ export default function SignInScreen() {
         setMessage('Account created. Check your email if confirmation is required.');
       }
     } catch (submitError) {
-      setError(
-        submitError instanceof Error
-          ? submitError.message
-          : 'The auth request failed. Check your connection and try again.'
-      );
+      setError(userMessage(submitError, 'Sign-in failed'));
     } finally {
       setIsSubmitting(false);
     }

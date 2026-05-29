@@ -19,7 +19,8 @@ import {
   PrimaryButton,
   SectionHeading,
   TextField,
-  useAppTheme
+  useAppTheme,
+  userMessage
 } from '@/lib/ui';
 import type { GlossaryTerm } from '@/lib/ui';
 import {
@@ -309,7 +310,7 @@ export default function ChecklistScreen() {
       });
       setTodaysChecklists(refreshed);
     } catch (err) {
-      setSubmitError(err instanceof Error ? err.message : 'Could not save checklist.');
+      setSubmitError(userMessage(err, "Couldn't save the checklist"));
     } finally {
       setIsSaving(false);
     }

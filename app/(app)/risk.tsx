@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 import { Link } from 'expo-router';
 
-import { AppShell, Card, InfoTip, PrimaryButton, SectionHeading, TextField, useAppTheme } from '@/lib/ui';
+import { AppShell, Card, InfoTip, PrimaryButton, SectionHeading, TextField, useAppTheme, userMessage } from '@/lib/ui';
 import { calculatePositionSize, getDrawdownStatus, getRiskLimits, updateRiskLimits } from '@/lib/trades';
 import type { DrawdownStatus, RiskLimits } from '@/lib/trades';
 
@@ -181,7 +181,7 @@ function RiskLimitsCard({ accountBalance }: { accountBalance?: number }) {
         maxWeeklyLossPct: l.maxWeeklyLossPct !== null ? String(l.maxWeeklyLossPct) : ''
       });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not load risk limits.');
+      setError(userMessage(err, "Couldn't load risk limits"));
     } finally {
       setIsLoading(false);
     }
@@ -208,7 +208,7 @@ function RiskLimitsCard({ accountBalance }: { accountBalance?: number }) {
       const s = await getDrawdownStatus(accountBalance).catch(() => null);
       setStatus(s);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not save limits.');
+      setError(userMessage(err, "Couldn't save limits"));
     } finally {
       setIsSaving(false);
     }

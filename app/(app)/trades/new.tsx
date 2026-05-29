@@ -20,7 +20,8 @@ import {
   SecondaryLinkButton,
   SectionHeading,
   TextField,
-  useAppTheme
+  useAppTheme,
+  userMessage
 } from '@/lib/ui';
 import { calculateRealizedPnl, createManualTrade, createStrategy, linkChecklistToTrade, listAccounts, listStrategies } from '@/lib/trades';
 import type { TradingAccount, TradingStrategy } from '@/lib/trades';
@@ -305,7 +306,7 @@ export default function NewTradeScreen() {
         }
       } catch (error) {
         if (isActive) {
-          setSubmitError(error instanceof Error ? error.message : 'Could not load trading accounts.');
+          setSubmitError(userMessage(error, "Couldn't load trading accounts"));
         }
       } finally {
         if (isActive) {
@@ -340,7 +341,7 @@ export default function NewTradeScreen() {
         }
       } catch (error) {
         if (isActive) {
-          setStrategyError(error instanceof Error ? error.message : 'Could not load strategies.');
+          setStrategyError(userMessage(error, "Couldn't load strategies"));
         }
       } finally {
         if (isActive) {
@@ -400,7 +401,7 @@ export default function NewTradeScreen() {
       setStrategyDraft(emptyStrategyDraft);
       setIsStrategyModalOpen(false);
     } catch (error) {
-      setStrategyError(error instanceof Error ? error.message : 'Could not create strategy.');
+      setStrategyError(userMessage(error, "Couldn't create the strategy"));
     } finally {
       setIsCreatingStrategy(false);
     }
@@ -469,7 +470,7 @@ export default function NewTradeScreen() {
 
       router.replace(`/trades/${savedTrade.id}` as Href);
     } catch (error) {
-      setSubmitError(error instanceof Error ? error.message : 'Could not save trade.');
+      setSubmitError(userMessage(error, "Couldn't save the trade"));
     } finally {
       setIsSaving(false);
     }

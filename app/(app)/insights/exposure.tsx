@@ -2,7 +2,7 @@ import { Link } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { AppShell, Card, InfoTip, LoadingState, SectionHeading, useAppTheme } from '@/lib/ui';
+import { AppShell, Card, InfoTip, LoadingState, SectionHeading, useAppTheme, userMessage } from '@/lib/ui';
 import {
   calculateCurrencyExposure,
   calculateExposureWarnings,
@@ -30,7 +30,7 @@ export default function ExposureScreen() {
       });
       setTrades(loaded);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not load trades.');
+      setError(userMessage(err, "Couldn't load trades"));
     } finally {
       setIsLoading(false);
     }
@@ -49,7 +49,7 @@ export default function ExposureScreen() {
         });
         if (isActive) setTrades(loaded);
       } catch (err) {
-        if (isActive) setError(err instanceof Error ? err.message : 'Could not load trades.');
+        if (isActive) setError(userMessage(err, "Couldn't load trades"));
       } finally {
         if (isActive) setIsLoading(false);
       }
@@ -94,7 +94,7 @@ export default function ExposureScreen() {
                 await seedOpenTrades();
                 await reload();
               } catch (err) {
-                setError(err instanceof Error ? err.message : 'Could not seed open trades.');
+                setError(userMessage(err, "Couldn't load demo trades"));
               } finally {
                 setIsSeeding(false);
               }

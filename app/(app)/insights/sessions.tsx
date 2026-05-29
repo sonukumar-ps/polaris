@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { AppShell, Card, LoadingState, SectionHeading, useAppTheme } from '@/lib/ui';
+import { AppShell, Card, LoadingState, SectionHeading, useAppTheme, userMessage } from '@/lib/ui';
 import { listTradeSummaries, useAccountScope } from '@/lib/trades';
 import {
   buildSessionSpecializationInsight,
@@ -50,7 +50,7 @@ export default function SessionsScreen() {
 
         if (isActive) setTrades(loaded);
       } catch (err) {
-        if (isActive) setError(err instanceof Error ? err.message : 'Could not load trades.');
+        if (isActive) setError(userMessage(err, "Couldn't load trades"));
       } finally {
         if (isActive) setIsLoading(false);
       }

@@ -7,7 +7,8 @@ import {
   Card,
   PrimaryButton,
   TextField,
-  useAppTheme
+  useAppTheme,
+  userMessage
 } from '@/lib/ui';
 import { createStrategy, listAccounts, listStrategies } from '@/lib/trades';
 import { seedDemoTrades } from '@/lib/trades/seed-trades';
@@ -87,7 +88,7 @@ export default function OnboardingScreen() {
       });
       setStep('seed');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not create strategy.');
+      setError(userMessage(err, "Couldn't create the strategy"));
     } finally {
       setIsWorking(false);
     }
@@ -104,7 +105,7 @@ export default function OnboardingScreen() {
       setSeedSummary(`Loaded ${tradeCount} demo trades + ${levelCount} S/R levels.`);
       setStep('done');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not seed data.');
+      setError(userMessage(err, "Couldn't load demo data"));
     } finally {
       setIsWorking(false);
     }

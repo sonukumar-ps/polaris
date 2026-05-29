@@ -13,7 +13,8 @@ import {
   SecondaryLinkButton,
   SectionHeading,
   TextField,
-  useAppTheme
+  useAppTheme,
+  userMessage
 } from '@/lib/ui';
 import {
   addStopLossMove,
@@ -132,7 +133,7 @@ export default function TradeDetailScreen() {
         }
       } catch (loadError) {
         if (isActive) {
-          setError(loadError instanceof Error ? loadError.message : 'Could not load trade.');
+          setError(userMessage(loadError, "Couldn't load the trade"));
         }
       } finally {
         if (isActive) {
@@ -223,7 +224,7 @@ export default function TradeDetailScreen() {
       setDraft(createDraftFromTrade(updatedTrade));
       setIsEditing(false);
     } catch (saveError) {
-      setEditError(saveError instanceof Error ? saveError.message : 'Could not update trade.');
+      setEditError(userMessage(saveError, "Couldn't update the trade"));
     } finally {
       setIsSavingEdit(false);
     }
@@ -264,7 +265,7 @@ export default function TradeDetailScreen() {
       });
       setImages(await listTradeImages(tradeId));
     } catch (uploadError) {
-      setImageError(uploadError instanceof Error ? uploadError.message : 'Could not attach image.');
+      setImageError(userMessage(uploadError, "Couldn't attach the image"));
     } finally {
       setIsUploadingImage(false);
     }
@@ -454,7 +455,7 @@ function StopLossTrailCard({
       const updatedTrade = await getTrade(trade.id);
       onTradeUpdate(updatedTrade);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not save SL move.');
+      setError(userMessage(err, "Couldn't save the stop-loss move"));
     } finally {
       setIsAdding(false);
     }
@@ -468,7 +469,7 @@ function StopLossTrailCard({
       const updatedTrade = await getTrade(trade.id);
       onTradeUpdate(updatedTrade);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not mark as bulletproof.');
+      setError(userMessage(err, "Couldn't mark the trade as bulletproof"));
     } finally {
       setIsMarkingBp(false);
     }
@@ -482,7 +483,7 @@ function StopLossTrailCard({
       const updatedTrade = await getTrade(trade.id);
       onTradeUpdate(updatedTrade);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not delete move.');
+      setError(userMessage(err, "Couldn't delete the move"));
     }
   }
 
@@ -546,7 +547,7 @@ function StopLossTrailCard({
                   setError('No SL moves added. Try a different trade with a stop loss.');
                 }
               } catch (err) {
-                setError(err instanceof Error ? err.message : 'Could not seed SL history.');
+                setError(userMessage(err, "Couldn't load demo stop-loss history"));
               }
             }}
             style={({ pressed }) => [

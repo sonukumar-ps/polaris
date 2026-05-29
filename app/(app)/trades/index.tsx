@@ -3,7 +3,7 @@ import type { Href } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { AppShell, PrimaryLinkButton, SectionHeading, useAppTheme } from '@/lib/ui';
+import { AppShell, PrimaryLinkButton, SectionHeading, useAppTheme, userMessage } from '@/lib/ui';
 import { countTrades, listTags, listTradeSummaries, useAccountScope } from '@/lib/trades';
 import type { JournalTag, TradeSummary } from '@/lib/trades';
 
@@ -69,7 +69,7 @@ export default function TradesScreen() {
           }
         } catch (loadError) {
           if (isActive) {
-            setError(loadError instanceof Error ? loadError.message : 'Could not load trades.');
+            setError(userMessage(loadError, "Couldn't load trades"));
           }
         } finally {
           if (isActive) {

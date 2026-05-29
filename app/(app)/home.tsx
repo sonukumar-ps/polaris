@@ -11,7 +11,8 @@ import {
   PrimaryLinkButton,
   SecondaryLinkButton,
   SectionHeading,
-  useAppTheme
+  useAppTheme,
+  userMessage
 } from '@/lib/ui';
 import { supabase } from '@/lib/supabase';
 import {
@@ -105,7 +106,7 @@ export default function HomeScreen() {
         }
       } catch (error) {
         if (isActive) {
-          setDashboardError(error instanceof Error ? error.message : 'Could not load dashboard metrics.');
+          setDashboardError(userMessage(error, "Couldn't load dashboard metrics"));
         }
       } finally {
         if (isActive) {

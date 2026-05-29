@@ -1,5 +1,6 @@
 export * from './components';
 export * from './drawdown-banner';
+export * from './errors';
 export * from './glossary';
 export * from './info-tip';
 export * from './responsive';

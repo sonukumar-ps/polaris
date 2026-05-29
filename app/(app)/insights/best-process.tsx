@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { AppShell, Card, LoadingState, SectionHeading, useAppTheme } from '@/lib/ui';
+import { AppShell, Card, LoadingState, SectionHeading, useAppTheme, userMessage } from '@/lib/ui';
 import { listTradeSummaries, useAccountScope } from '@/lib/trades';
 import { calculateExecutionScores } from '@/lib/trades/backtesting';
 import { seedDemoTrades } from '@/lib/trades/seed-trades';
@@ -25,7 +25,7 @@ export default function BestProcessScreen() {
       });
       setTrades(loaded);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not load trades.');
+      setError(userMessage(err, "Couldn't load trades"));
     } finally {
       setIsLoading(false);
     }
@@ -46,7 +46,7 @@ export default function BestProcessScreen() {
 
         if (isActive) setTrades(loaded);
       } catch (err) {
-        if (isActive) setError(err instanceof Error ? err.message : 'Could not load trades.');
+        if (isActive) setError(userMessage(err, "Couldn't load trades"));
       } finally {
         if (isActive) setIsLoading(false);
       }
@@ -103,7 +103,7 @@ export default function BestProcessScreen() {
                       await seedDemoTrades();
                       await reload();
                     } catch (err) {
-                      setError(err instanceof Error ? err.message : 'Could not seed demo trades.');
+                      setError(userMessage(err, "Couldn't load demo trades"));
                     } finally {
                       setIsSeeding(false);
                     }
