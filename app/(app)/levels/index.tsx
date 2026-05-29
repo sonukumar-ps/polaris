@@ -4,6 +4,7 @@ import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 import {
   AppShell,
   Card,
+  ConfirmDialog,
   friendlyReason,
   InfoTip,
   LoadingState,
@@ -53,6 +54,10 @@ export default function LevelsScreen() {
   const [isSaving, setIsSaving] = useState(false);
   const [filterSymbol, setFilterSymbol] = useState<string>('');
   const [openDropdown, setOpenDropdown] = useState<'filter' | 'add-symbol' | null>(null);
+  const [pendingAction, setPendingAction] = useState<{
+    action: 'touch' | 'archive' | 'delete';
+    level: SrLevelRow;
+  } | null>(null);
 
   // Full reload (shows loading state). Used on mount + filter change only.
   async function reload() {
@@ -293,9 +298,18 @@ export default function LevelsScreen() {
             <PairLevelsCard
               key={symbol}
               levels={symbolLevels}
-              onDeactivate={handleDeactivate}
-              onDelete={handleDelete}
-              onTouch={handleTouch}
+              onDeactivate={(id) => {
+                const level = symbolLevels.find((l) => l.id === id);
+                if (level) setPendingAction({ action: 'archive', level });
+              }}
+              onDelete={(id) => {
+                const level = symbolLevels.find((l) => l.id === id);
+                if (level) setPendingAction({ action: 'delete', level });
+              }}
+              onTouch={(id) => {
+                const level = symbolLevels.find((l) => l.id === id);
+                if (level) setPendingAction({ action: 'touch', level });
+              }}
               symbol={symbol}
             />
           ))}
@@ -338,8 +352,56 @@ export default function LevelsScreen() {
         selectedValue={draft.symbol}
         title="Select pair"
       />
+
+      <ConfirmDialog
+        cancelLabel="Cancel"
+        confirmLabel={confirmCopy(pendingAction).confirmLabel}
+        destructive={pendingAction?.action === 'delete'}
+        isOpen={pendingAction !== null}
+        message={confirmCopy(pendingAction).message}
+        onCancel={() => setPendingAction(null)}
+        onConfirm={() => {
+          if (!pendingAction) return;
+          const { action, level } = pendingAction;
+          setPendingAction(null);
+          if (action === 'touch') handleTouch(level.id);
+          else if (action === 'archive') handleDeactivate(level.id);
+          else if (action === 'delete') handleDelete(level.id);
+        }}
+        title={confirmCopy(pendingAction).title}
+      />
     </AppShell>
   );
+}
+
+function confirmCopy(
+  pending: { action: 'touch' | 'archive' | 'delete'; level: SrLevelRow } | null
+): { confirmLabel: string; message: string; title: string } {
+  if (!pending) return { confirmLabel: 'Confirm', message: '', title: '' };
+  const { action, level } = pending;
+  const priceLabel = `${level.symbol} at ${level.price}`;
+
+  if (action === 'touch') {
+    return {
+      confirmLabel: 'Record touch',
+      message: `This will bump the touch count from ${level.touch_count} to ${level.touch_count + 1} and set the last-touched date to today.`,
+      title: `Record a touch on ${priceLabel}?`
+    };
+  }
+
+  if (action === 'archive') {
+    return {
+      confirmLabel: 'Archive',
+      message: 'The level will be hidden from the active list but kept in the database for future reference.',
+      title: `Archive ${priceLabel}?`
+    };
+  }
+
+  return {
+    confirmLabel: 'Delete',
+    message: "This will permanently remove the level. You won't be able to recover it.",
+    title: `Delete ${priceLabel}?`
+  };
 }
 
 function PairLevelsCard({

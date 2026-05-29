@@ -1,4 +1,5 @@
 export * from './components';
+export * from './confirm-dialog';
 export * from './drawdown-banner';
 export * from './errors';
 export * from './glossary';
